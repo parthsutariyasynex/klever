@@ -9,19 +9,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const router = useRouter();
     const { toast } = useToast();
 
-    const handleLogout = async () => {
-        try {
-            const res = await fetch("/api/auth/logout", { method: "POST" });
-            if (res.ok) {
-                toast("Logged out successfully", "success");
-                router.push("/login");
-            } else {
-                toast("Failed to log out", "error");
-            }
-        } catch (error) {
-            toast("Network error. Please try again.", "error");
-        }
-    };
+    // const handleLogout = async () => {
+    //     try {
+    //         const res = await fetch("/api/auth/logout", { method: "POST" });
+    //         if (res.ok) {
+    //             toast("Logged out successfully", "success");
+    //             router.push("/login");
+    //         } else {
+    //             toast("Failed to log out", "error");
+    //         }
+    //     } catch (error) {
+    //         toast("Network error. Please try again.", "error");
+    //     }
+    // };
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
@@ -47,7 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </nav>
 
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-                    <button
+                    {/* <button
                         onClick={handleLogout}
                         className="flex w-full items-center px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/10"
                     >
@@ -55,7 +55,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
                         Sign out
-                    </button>
+                    </button> */}
                 </div>
             </aside>
 
@@ -64,11 +64,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {/* Mobile Header */}
                 <header className="md:hidden h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4">
                     <span className="text-lg font-bold text-accent">Supplier Portal</span>
-                    <button onClick={handleLogout} className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400">
+                    {/* <button onClick={handleLogout} className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400">
                         <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
-                    </button>
+                    </button> */}
                 </header>
 
                 <div className="p-6 md:p-8">
