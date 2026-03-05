@@ -23,23 +23,14 @@ export default function DashboardPage() {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
 
-  // Dropdown filters
-  const [brand, setBrand] = useState("");
-  const [brandCategory, setBrandCategory] = useState("");
-  const [vehicleType, setVehicleType] = useState("");
-  const [country, setCountry] = useState("");
-  const [year, setYear] = useState("");
-  const [runflat, setRunflat] = useState("");
-  const [tyreMarking, setTyreMarking] = useState("");
-  const [size, setSize] = useState("");
-  const [loadIndex, setLoadIndex] = useState("");
+  // Dropdown & Input filters
   const [sourceName, setSourceName] = useState("");
-
-  // Range filters
-  const [priceMin, setPriceMin] = useState("");
-  const [priceMax, setPriceMax] = useState("");
-  const [costMin, setCostMin] = useState("");
-  const [costMax, setCostMax] = useState("");
+  const [brandCategory, setBrandCategory] = useState("");
+  const [brand, setBrand] = useState("");
+  const [size, setSize] = useState("");
+  const [year, setYear] = useState("");
+  const [qty, setQty] = useState("");
+  const [latest, setLatest] = useState(false);
 
   // Sort
   const [sortBy, setSortBy] = useState("createdAt");
@@ -52,7 +43,6 @@ export default function DashboardPage() {
 
   // Filter options from API
   const [filterOptions, setFilterOptions] = useState<FilterOptions>(EMPTY_FILTERS);
-  // const [showFilters, setShowFilters] = useState(false);
 
   /* ══════════════════════════
      Fetch Products (server-side pagination)
@@ -65,20 +55,13 @@ export default function DashboardPage() {
       const params = new URLSearchParams({ page: String(page), limit: "200", sortBy, sortOrder });
 
       if (search) params.set("search", search);
-      if (brand) params.set("brand", brand);
-      if (brandCategory) params.set("brand_category", brandCategory);
-      if (vehicleType) params.set("vehicle_type", vehicleType);
-      if (country) params.set("country", country);
-      if (year) params.set("year", year);
-      if (runflat) params.set("runflat", runflat);
-      if (tyreMarking) params.set("tyre_marking", tyreMarking);
-      if (size) params.set("size", size);
-      if (loadIndex) params.set("load_index", loadIndex);
       if (sourceName) params.set("source_name", sourceName);
-      if (priceMin) params.set("price_min", priceMin);
-      if (priceMax) params.set("price_max", priceMax);
-      if (costMin) params.set("cost_min", costMin);
-      if (costMax) params.set("cost_max", costMax);
+      if (brandCategory) params.set("brand_category", brandCategory);
+      if (brand) params.set("brand", brand);
+      if (size) params.set("size", size);
+      if (year) params.set("year", year);
+      if (qty) params.set("qty", qty);
+      if (latest) params.set("latest", "true");
 
       const res = await fetch(`/api/products?${params}`);
       if (!res.ok) throw new Error("Failed to fetch products");
@@ -93,11 +76,11 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, sortBy, sortOrder, brand, brandCategory, vehicleType, country, year, runflat, tyreMarking, size, loadIndex, sourceName, priceMin, priceMax, costMin, costMax]);
+  }, [page, search, sortBy, sortOrder, sourceName, brandCategory, brand, size, year, qty, latest]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-  /* ── Debounced Search ── */
+  /* ── Debounced Search & Input ── */
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const handleSearchChange = (value: string) => {
     setSearchInput(value);
@@ -105,12 +88,11 @@ export default function DashboardPage() {
     debounceRef.current = setTimeout(() => { setSearch(value); setPage(1); }, 400);
   };
 
-  /* ── Range filter debounce ── */
-  const rangeDebounceRef = useRef<NodeJS.Timeout | null>(null);
-  const applyRangeFilter = (setter: (v: string) => void, value: string) => {
-    setter(value);
-    if (rangeDebounceRef.current) clearTimeout(rangeDebounceRef.current);
-    rangeDebounceRef.current = setTimeout(() => { setPage(1); }, 600);
+  const qtyDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const handleQtyChange = (value: string) => {
+    setQty(value);
+    if (qtyDebounceRef.current) clearTimeout(qtyDebounceRef.current);
+    qtyDebounceRef.current = setTimeout(() => { setPage(1); }, 400);
   };
 
   /* ── Handlers ── */
@@ -135,14 +117,13 @@ export default function DashboardPage() {
   }, [fetchProducts, toast]);
 
   const clearFilters = () => {
-    setBrand(""); setBrandCategory(""); setVehicleType(""); setCountry("");
-    setYear(""); setRunflat(""); setTyreMarking(""); setSize("");
-    setLoadIndex(""); setSourceName(""); setPriceMin(""); setPriceMax("");
-    setCostMin(""); setCostMax(""); setSearch(""); setSearchInput("");
+    setSourceName(""); setBrandCategory(""); setBrand("");
+    setSize(""); setYear(""); setQty(""); setLatest(false);
+    setSearch(""); setSearchInput("");
     setPage(1);
   };
 
-  const activeFilterCount = [brand, brandCategory, vehicleType, country, year, runflat, tyreMarking, size, loadIndex, sourceName, priceMin, priceMax, costMin, costMax]
+  const activeFilterCount = [sourceName, brandCategory, brand, size, year, qty, latest ? "true" : ""]
     .filter(Boolean).length;
 
   /* ══════════════════════════
@@ -159,184 +140,6 @@ export default function DashboardPage() {
     );
   }
 
-  //   return (
-  //     <div className="h-screen flex flex-col bg-[#0a0f1c] text-white overflow-hidden">
-  //       <div className="max-w-[1600px] w-full mx-auto px-4 md:px-8 flex flex-col h-full">
-  //         {/* Header (Fixed) */}
-  //         <header className="flex-none flex items-center justify-between py-4 md:py-5 border-b border-gray-800 mb-5 flex-wrap gap-4">
-  //           <div className="flex flex-col gap-1">
-  //             <div className="flex items-center gap-3">
-  //               <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-500/20">
-  //                 K
-  //               </div>
-  //               <span className="text-2xl font-semibold tracking-tight text-white">Klever</span>
-  //             </div>
-  //             <p className="text-sm font-medium text-gray-400 uppercase tracking-widest pl-[52px]">Supplier Product Management</p>
-  //           </div>
-  //         </header>
-
-  //         {error && (
-  //           <div className="flex-none flex items-center justify-between bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
-  //             <span className="text-red-400 text-sm font-medium">{error}</span>
-  //             <button className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-md text-sm font-medium transition-colors" onClick={fetchProducts}>Retry</button>
-  //           </div>
-  //         )}
-
-  //         {/* Upload CSV (Fixed) */}
-  //         <section className="flex-none mb-6">
-  //           <UploadCSV onUploadComplete={handleUploadComplete} />
-  //         </section>
-
-  //         {/* Search & Filters (Fixed) */}
-  //         <section className="flex-none mb-4">
-  //           <div className="flex flex-wrap items-center gap-4 bg-gray-900/50 p-4 rounded-xl border border-gray-800 backdrop-blur-sm">
-  //             <div className="relative flex-1 min-w-[280px] max-w-xl group">
-  //               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-indigo-400 transition-colors">
-  //                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-  //                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-  //                 </svg>
-  //               </span>
-  //               <input
-  //                 type="text"
-  //                 className="w-full bg-[#0d1323] border border-gray-700 rounded-lg pl-10 pr-10 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-inner"
-  //                 placeholder="Search by product name, SKU, klever_sku, or brand..."
-  //                 value={searchInput}
-  //                 onChange={(e) => handleSearchChange(e.target.value)}
-  //               />
-  //               {searchInput && (
-  //                 <button
-  //                   className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-  //                   onClick={() => handleSearchChange("")}
-  //                 >
-  //                   <span className="text-xs">✕</span>
-  //                 </button>
-  //               )}
-  //             </div>
-
-  //             <span className="text-sm font-medium text-gray-400 whitespace-nowrap px-2 flex items-center">
-  //               <strong className="text-gray-200 font-semibold mr-1">{total.toLocaleString()}</strong> products
-  //               {loading && <div className="ml-2 w-3.5 h-3.5 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />}
-  //             </span>
-
-  //             <button
-  //               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${showFilters
-  //                 ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20"
-  //                 : "bg-[#0d1323] border border-gray-700 text-gray-300 hover:border-gray-500 hover:text-white"
-  //                 }`}
-  //               onClick={() => setShowFilters((p) => !p)}
-  //             >
-  //               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-  //                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-  //               </svg>
-  //               Filters
-  //               {activeFilterCount > 0 && <span className="flex items-center justify-center bg-white text-indigo-600 w-5 h-5 rounded-md text-xs font-bold leading-none">{activeFilterCount}</span>}
-  //             </button>
-
-  //             {(activeFilterCount > 0 || search) && (
-  //               <button className="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-lg text-sm font-medium transition-colors" onClick={clearFilters}>
-  //                 Clear All
-  //               </button>
-  //             )}
-  //           </div>
-
-  //           {showFilters && (
-  //             <div className="mt-3 p-5 bg-[#0d1323] border border-gray-800 rounded-xl shadow-xl transition-all duration-300">
-  //               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-5">
-  //                 <FilterSelect label="Brand" value={brand} onChange={(v) => { setBrand(v); setPage(1); }} options={filterOptions.brands} />
-  //                 <FilterSelect label="Category" value={brandCategory} onChange={(v) => { setBrandCategory(v); setPage(1); }} options={filterOptions.brandCategories} />
-  //                 <FilterSelect label="Vehicle" value={vehicleType} onChange={(v) => { setVehicleType(v); setPage(1); }} options={filterOptions.vehicleTypes} />
-  //                 <FilterSelect label="Country" value={country} onChange={(v) => { setCountry(v); setPage(1); }} options={filterOptions.countries} />
-  //               </div>
-
-  //               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-5">
-  //                 <FilterSelect label="Year" value={year} onChange={(v) => { setYear(v); setPage(1); }} options={filterOptions.years.map(String)} />
-  //                 <FilterSelect label="Runflat" value={runflat} onChange={(v) => { setRunflat(v); setPage(1); }} options={filterOptions.runflatOptions} />
-  //                 <FilterSelect label="Source" value={sourceName} onChange={(v) => { setSourceName(v); setPage(1); }} options={filterOptions.sourceNames} />
-  //                 <FilterSelect label="Tyre Marking" value={tyreMarking} onChange={(v) => { setTyreMarking(v); setPage(1); }} options={filterOptions.tyreMarkings} />
-  //               </div>
-
-  //               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-  //                 <FilterSelect label="Size" value={size} onChange={(v) => { setSize(v); setPage(1); }} options={filterOptions.sizes} />
-  //                 <FilterSelect label="Load Index" value={loadIndex} onChange={(v) => { setLoadIndex(v); setPage(1); }} options={filterOptions.loadIndexes} />
-
-  //                 <div className="flex flex-col gap-1.5">
-  //                   <label className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
-  //                     Price Range
-  //                   </label>
-  //                   <div className="flex items-center gap-2">
-  //                     <input type="number" placeholder="Min" className="flex-1 min-w-[80px] bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono" value={priceMin} onChange={(e) => applyRangeFilter(setPriceMin, e.target.value)} />
-  //                     <span className="text-gray-600 font-medium">–</span>
-  //                     <input type="number" placeholder="Max" className="flex-1 min-w-[80px] bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono" value={priceMax} onChange={(e) => applyRangeFilter(setPriceMax, e.target.value)} />
-  //                   </div>
-  //                 </div>
-
-  //                 <div className="flex flex-col gap-1.5">
-  //                   <label className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
-  //                     Cost Range
-  //                   </label>
-  //                   <div className="flex items-center gap-2">
-  //                     <input type="number" placeholder="Min" className="flex-1 min-w-[80px] bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono" value={costMin} onChange={(e) => applyRangeFilter(setCostMin, e.target.value)} />
-  //                     <span className="text-gray-600 font-medium">–</span>
-  //                     <input type="number" placeholder="Max" className="flex-1 min-w-[80px] bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono" value={costMax} onChange={(e) => applyRangeFilter(setCostMax, e.target.value)} />
-  //                   </div>
-  //                 </div>
-  //               </div>
-  //             </div>
-  //           )}
-  //         </section>
-
-  //         {/* Product Table (Scrollable) */}
-  //         <section className="flex-1 min-h-0 mb-4 flex flex-col">
-  //           <ProductTable
-  //             products={products}
-  //             page={page}
-  //             sortBy={sortBy}
-  //             sortOrder={sortOrder}
-  //             onSort={handleSort}
-  //             onDelete={handleDelete}
-  //           />
-  //         </section>
-
-  //         {/* Pagination (Fixed) */}
-  //         <section className="flex-none pb-4">
-  //           <Pagination
-  //             page={page}
-  //             totalPages={totalPages}
-  //             total={total}
-  //             perPage={200}
-  //             onPageChange={setPage}
-  //           />
-  //         </section>
-  //       </div>
-  //     </div>
-  //   );
-  // }
-
-  // /* ── Reusable Filter Select ── */
-  // function FilterSelect({ label, value, onChange, options }: {
-  //   label: string;
-  //   value: string;
-  //   onChange: (value: string) => void;
-  //   options: string[];
-  // }) {
-  //   return (
-  //     <div className="flex flex-col gap-1.5">
-  //       <label className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
-  //         {label}
-  //         {value && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />}
-  //       </label>
-  //       <select
-  //         value={value}
-  //         onChange={(e) => onChange(e.target.value)}
-  //         className="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%20%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M5%207.5L10%2012.5L15%207.5%22%20stroke%3D%22%236B7280%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_8px_center] pr-8"
-  //       >
-  //         <option value="">All</option>
-  //         {options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-  //       </select>
-  //     </div>
-  //   );
-
-
   return (
     <div className="h-screen flex flex-col bg-[#0a0f1c] text-white overflow-hidden">
       <div className="max-w-[1600px] w-full mx-auto px-4 md:px-8 flex flex-col h-full">
@@ -351,6 +154,9 @@ export default function DashboardPage() {
             </div>
             <p className="text-sm font-medium text-gray-400 uppercase tracking-widest pl-[52px]">Supplier Product Management</p>
           </div>
+          <div className="flex-none">
+            <UploadCSV onUploadComplete={handleUploadComplete} />
+          </div>
         </header>
 
         {error && (
@@ -360,120 +166,103 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Upload CSV (Fixed) */}
-        <section className="flex-none mb-6">
-          <UploadCSV onUploadComplete={handleUploadComplete} />
-        </section>
-
-        {/* Search & Filters (Fixed) */}
-        <section className="flex-none mb-4">
-          <div className="flex flex-wrap items-center gap-4 bg-gray-900/50 p-4 rounded-xl border border-gray-800 backdrop-blur-sm">
-            <div className="relative flex-1 min-w-[280px] max-w-xl group">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-indigo-400 transition-colors">
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </span>
-              <input
-                type="text"
-                className="w-full bg-[#0d1323] border border-gray-700 rounded-lg pl-10 pr-10 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-inner"
-                placeholder="Search by product name, SKU, klever_sku, or brand..."
-                value={searchInput}
-                onChange={(e) => handleSearchChange(e.target.value)}
-              />
-              {searchInput && (
-                <button
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-                  onClick={() => handleSearchChange("")}
-                >
-                  <span className="text-xs">✕</span>
-                </button>
-              )}
-            </div>
-
-            <span className="text-sm font-medium text-gray-400 whitespace-nowrap px-2 flex items-center">
+        {/* Filters Grid Section (Directly Visible) */}
+        <section className="flex-none mb-4 bg-gray-900/50 p-5 rounded-xl border border-gray-800 backdrop-blur-sm shadow-sm transition-all">
+          <div className="flex items-center gap-4 mb-4">
+            <span className="text-sm font-medium text-gray-400 whitespace-nowrap flex items-center">
               <strong className="text-gray-200 font-semibold mr-1">{total.toLocaleString()}</strong> products
               {loading && <div className="ml-2 w-3.5 h-3.5 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />}
             </span>
-
-
           </div>
 
-          {/* {showFilters && ( */}
-          <div className="mt-3 p-4 bg-[#0d1323] border border-gray-800 rounded-xl shadow-xl">
+          <div className="flex flex-row items-end flex-nowrap w-full overflow-x-auto overflow-y-hidden pb-3 gap-3 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
 
-            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-2">
+            <div className="min-w-[130px] flex-none"><FilterSelect label="Supplier" value={sourceName} onChange={(v) => { setSourceName(v); setPage(1); }} options={filterOptions.sourceNames} /></div>
+            <div className="min-w-[130px] flex-none"><FilterSelect label="Brand Category" value={brandCategory} onChange={(v) => { setBrandCategory(v); setPage(1); }} options={filterOptions.brandCategories} /></div>
+            <div className="min-w-[130px] flex-none"><FilterSelect label="Brand" value={brand} onChange={(v) => { setBrand(v); setPage(1); }} options={filterOptions.brands} /></div>
 
-              <FilterSelect label="Brand" value={brand} onChange={(v) => { setBrand(v); setPage(1); }} options={filterOptions.brands} />
-
-              <FilterSelect label="Category" value={brandCategory} onChange={(v) => { setBrandCategory(v); setPage(1); }} options={filterOptions.brandCategories} />
-
-              <FilterSelect label="Vehicle" value={vehicleType} onChange={(v) => { setVehicleType(v); setPage(1); }} options={filterOptions.vehicleTypes} />
-
-              <FilterSelect label="Country" value={country} onChange={(v) => { setCountry(v); setPage(1); }} options={filterOptions.countries} />
-
-              <FilterSelect label="Year" value={year} onChange={(v) => { setYear(v); setPage(1); }} options={filterOptions.years.map(String)} />
-
-              <FilterSelect label="Runflat" value={runflat} onChange={(v) => { setRunflat(v); setPage(1); }} options={filterOptions.runflatOptions} />
-
-              <FilterSelect label="Source" value={sourceName} onChange={(v) => { setSourceName(v); setPage(1); }} options={filterOptions.sourceNames} />
-
-              <FilterSelect label="Tyre Marking" value={tyreMarking} onChange={(v) => { setTyreMarking(v); setPage(1); }} options={filterOptions.tyreMarkings} />
-
-              <FilterSelect label="Size" value={size} onChange={(v) => { setSize(v); setPage(1); }} options={filterOptions.sizes} />
-
-              <FilterSelect label="Load Index" value={loadIndex} onChange={(v) => { setLoadIndex(v); setPage(1); }} options={filterOptions.loadIndexes} />
-
-              {/* Price */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] text-gray-500 uppercase">Price</label>
-
-                <div className="flex gap-1">
-                  <input
-                    type="number"
-                    placeholder="Min"
-                    value={priceMin}
-                    onChange={(e) => applyRangeFilter(setPriceMin, e.target.value)}
-                    className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs"
-                  />
-
-                  <input
-                    type="number"
-                    placeholder="Max"
-                    value={priceMax}
-                    onChange={(e) => applyRangeFilter(setPriceMax, e.target.value)}
-                    className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs"
-                  />
-                </div>
+            {/* Open Search */}
+            <div className="flex flex-col gap-1.5 min-w-[200px] flex-1">
+              <label className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
+                Open Search
+              </label>
+              <div className="relative group h-[38px] w-full">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-indigo-400 transition-colors">
+                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  className="w-full h-full bg-[#0d1323] border border-gray-700 rounded-md pl-10 pr-4 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-inner"
+                  placeholder="Search products..."
+                  value={searchInput}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                />
               </div>
-
-              {/* Cost */}
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] text-gray-500 uppercase">Cost</label>
-
-                <div className="flex gap-1">
-                  <input
-                    type="number"
-                    placeholder="Min"
-                    value={costMin}
-                    onChange={(e) => applyRangeFilter(setCostMin, e.target.value)}
-                    className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs"
-                  />
-
-                  <input
-                    type="number"
-                    placeholder="Max"
-                    value={costMax}
-                    onChange={(e) => applyRangeFilter(setCostMax, e.target.value)}
-                    className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs"
-                  />
-                </div>
-              </div>
-
             </div>
 
+            <div className="min-w-[120px] flex-none"><FilterSelect label="Size" value={size} onChange={(v) => { setSize(v); setPage(1); }} options={filterOptions.sizes} /></div>
+            <div className="min-w-[100px] flex-none"><FilterSelect label="Year" value={year} onChange={(v) => { setYear(v); setPage(1); }} options={filterOptions.years.map(String)} /></div>
+
+            {/* Qty Input */}
+            <div className="flex flex-col gap-1.5 min-w-[80px] flex-none">
+              <label className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
+                Qty
+                {qty && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />}
+              </label>
+              <input
+                type="number"
+                placeholder="Qty..."
+                className="w-full h-[38px] bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono"
+                value={qty}
+                onChange={(e) => handleQtyChange(e.target.value)}
+              />
+            </div>
+
+            {/* Latest? Checkbox */}
+            <div className="flex flex-col items-center gap-1.5 min-w-[50px] flex-none cursor-pointer" onClick={() => { setLatest(!latest); setPage(1); }}>
+              <div className="relative flex items-center justify-center w-[18px] h-[18px] mt-[6px]">
+                <input
+                  type="checkbox"
+                  className="peer appearance-none w-full h-full rounded bg-gray-900 checked:bg-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all border-none shadow-inner"
+                  checked={latest}
+                  readOnly
+                />
+                <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <span className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
+                Latest?
+              </span>
+            </div>
+
+            {/* Actions: Search & Clear (Moved to the end) */}
+            <div className="flex items-center gap-2 h-[38px] flex-none ml-2">
+              <button
+                type="button"
+                title="Search"
+                className="w-[38px] h-[38px] flex-none flex items-center justify-center rounded-md bg-indigo-600 hover:bg-indigo-500 transition-all text-white shadow-md shadow-indigo-500/20 cursor-pointer"
+                onClick={() => { setPage(1); fetchProducts(); }}
+              >
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                title="Clear Search & Filters"
+                className="w-[38px] h-[38px] flex-none flex items-center justify-center rounded-full bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:text-white transition-all text-gray-400 group cursor-pointer"
+                onClick={clearFilters}
+              >
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="group-hover:-rotate-180 transition-transform duration-300">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
           </div>
-          {/* )}   */}
         </section>
 
         {/* Product Table (Scrollable) */}
@@ -512,23 +301,18 @@ function FilterSelect({ label, value, onChange, options }: {
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
+      <label className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
         {label}
         {value && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />}
       </label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%20%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M5%207.5L10%2012.5L15%207.5%22%20stroke%3D%22%236B7280%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_8px_center] pr-8"
+        className="w-full h-full min-h-[38px] bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%20%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M5%207.5L10%2012.5L15%207.5%22%20stroke%3D%22%236B7280%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_8px_center] pr-8"
       >
         <option value="">All</option>
         {options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
       </select>
     </div>
   );
-
-
-
-
-
-}
+} 
