@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    if (brand) filter.brand = brand;
+    if (brand) filter.brand = { $regex: brand, $options: "i" };
     if (brandCategory) filter.brand_category = brandCategory;
     if (vehicleType) filter.vehicle_type = vehicleType;
     if (country) filter.country = country;
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
     }
     if (runflat) filter.runflat = runflat;
     if (tyreMarking) filter.tyre_marking = tyreMarking;
-    if (size) filter.size = size;
+    if (size) filter.size = { $regex: size, $options: "i" };
     if (plainSize) filter.plain_size = plainSize;
     if (loadIndex) filter.load_index = loadIndex;
     if (sourceName) filter.source_name = sourceName;

@@ -150,9 +150,9 @@ export default function DashboardPage() {
               <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-500/20">
                 K
               </div>
-              <span className="text-2xl font-semibold tracking-tight text-white">Klever</span>
+              <span className="text-2xl font-semibold tracking-tight text-white">Klever || Supplier Product Management</span>
             </div>
-            <p className="text-sm font-medium text-gray-400 uppercase tracking-widest pl-[52px]">Supplier Product Management</p>
+
           </div>
           <div className="flex-none">
             <UploadCSV onUploadComplete={handleUploadComplete} />
@@ -167,86 +167,86 @@ export default function DashboardPage() {
         )}
 
         {/* Filters Grid Section (Directly Visible) */}
-        <section className="flex-none mb-4 bg-gray-900/50 p-5 rounded-xl border border-gray-800 backdrop-blur-sm shadow-sm transition-all">
-          <div className="flex items-center gap-4 mb-4">
-            <span className="text-sm font-medium text-gray-400 whitespace-nowrap flex items-center">
-              <strong className="text-gray-200 font-semibold mr-1">{total.toLocaleString()}</strong> products
-              {loading && <div className="ml-2 w-3.5 h-3.5 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />}
-            </span>
-          </div>
+        <section className="flex-none mb-4 bg-gray-900/50 p-5 rounded-xl border border-gray-800 backdrop-blur-sm shadow-sm transition-all relative z-50">
 
-          <div className="flex flex-row items-end flex-nowrap w-full overflow-x-auto overflow-y-hidden pb-3 gap-3 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+          <div className="flex flex-row items-end flex-nowrap w-full overflow-visible pb-1 gap-2">
 
-            <div className="min-w-[130px] flex-none"><FilterSelect label="Supplier" value={sourceName} onChange={(v) => { setSourceName(v); setPage(1); }} options={filterOptions.sourceNames} /></div>
-            <div className="min-w-[130px] flex-none"><FilterSelect label="Brand Category" value={brandCategory} onChange={(v) => { setBrandCategory(v); setPage(1); }} options={filterOptions.brandCategories} /></div>
-            <div className="min-w-[130px] flex-none"><FilterSelect label="Brand" value={brand} onChange={(v) => { setBrand(v); setPage(1); }} options={filterOptions.brands} /></div>
+            <div className="min-w-[60px] flex-[1.5]"><FilterSelect label="Supplier" value={sourceName} onChange={(v) => { setSourceName(v); setPage(1); }} options={filterOptions.sourceNames} /></div>
+            <div className="min-w-[60px] flex-[1.5]">
+              <FilterSelect label="Category" value={brandCategory} onChange={(v) => { setBrandCategory(v); setPage(1); }} options={filterOptions.brandCategories} />
+
+            </div>
+            <div className="min-w-[60px] flex-[1.5]">
+              <InlineSearchInput label="Brand" value={brand} onChange={(v) => { setBrand(v); setPage(1); }} options={filterOptions.brands} />
+            </div>
 
             {/* Open Search */}
-            <div className="flex flex-col gap-1.5 min-w-[200px] flex-1">
-              <label className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
-                Open Search
+            <div className="flex flex-col gap-1 min-w-[80px] flex-[2]">
+              <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
+                Search
               </label>
-              <div className="relative group h-[38px] w-full">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-indigo-400 transition-colors">
-                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="relative group h-[32px] w-full">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-indigo-400 transition-colors">
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </span>
                 <input
                   type="text"
-                  className="w-full h-full bg-[#0d1323] border border-gray-700 rounded-md pl-10 pr-4 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-inner"
-                  placeholder="Search products..."
+                  className="w-full h-full bg-[#0d1323] border border-gray-700 rounded-md pl-8 pr-2 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-inner"
+                  placeholder="Query..."
                   value={searchInput}
                   onChange={(e) => handleSearchChange(e.target.value)}
                 />
               </div>
             </div>
 
-            <div className="min-w-[120px] flex-none"><FilterSelect label="Size" value={size} onChange={(v) => { setSize(v); setPage(1); }} options={filterOptions.sizes} /></div>
-            <div className="min-w-[100px] flex-none"><FilterSelect label="Year" value={year} onChange={(v) => { setYear(v); setPage(1); }} options={filterOptions.years.map(String)} /></div>
+            <div className="min-w-[60px] flex-1"><InlineSearchInput label="Size" value={size} onChange={(v) => { setSize(v); setPage(1); }} options={filterOptions.sizes} /></div>
+            <div className="min-w-[50px] flex-1"><InlineSearchInput label="Year" value={year} onChange={(v) => { setYear(v); setPage(1); }} options={filterOptions.years.map(String)} /></div>
 
             {/* Qty Input */}
-            <div className="flex flex-col gap-1.5 min-w-[80px] flex-none">
-              <label className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
+            <div className="flex flex-col gap-1 min-w-[40px] flex-[0.8]">
+              <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
                 Qty
-                {qty && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />}
+                {qty && <span className="w-1 h-1 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />}
               </label>
               <input
                 type="number"
                 placeholder="Qty..."
-                className="w-full h-[38px] bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono"
+                className="w-full h-[32px] bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono"
                 value={qty}
                 onChange={(e) => handleQtyChange(e.target.value)}
               />
             </div>
 
             {/* Latest? Checkbox */}
-            <div className="flex flex-col items-center gap-1.5 min-w-[50px] flex-none cursor-pointer" onClick={() => { setLatest(!latest); setPage(1); }}>
-              <div className="relative flex items-center justify-center w-[18px] h-[18px] mt-[6px]">
+            <div className="flex flex-col items-center gap-1 min-w-[44px] flex-none cursor-pointer" onClick={() => { setLatest(!latest); setPage(1); }}>
+              <div className="relative flex items-center justify-center w-[16px] h-[16px] mt-[4px]">
                 <input
                   type="checkbox"
-                  className="peer appearance-none w-full h-full rounded bg-gray-900 checked:bg-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all border-none shadow-inner"
+                  className="peer appearance-none w-full h-full rounded bg-gray-900 checked:bg-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all border-2 border-gray-700 shadow-inner"
                   checked={latest}
                   readOnly
                 />
+
                 <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <span className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
+              <span className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase mt-0.5">
                 Latest?
               </span>
             </div>
 
             {/* Actions: Search & Clear (Moved to the end) */}
-            <div className="flex items-center gap-2 h-[38px] flex-none ml-2">
+            <div className="flex items-center gap-1.5 h-[32px] flex-none ml-1 cursor-pointer">
               <button
                 type="button"
                 title="Search"
-                className="w-[38px] h-[38px] flex-none flex items-center justify-center rounded-md bg-indigo-600 hover:bg-indigo-500 transition-all text-white shadow-md shadow-indigo-500/20 cursor-pointer"
+                className="w-[32px] h-[32px] flex-none flex items-center justify-center rounded-md bg-indigo-600 hover:bg-indigo-500 transition-all text-white shadow-md shadow-indigo-500/20"
                 onClick={() => { setPage(1); fetchProducts(); }}
               >
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </button>
@@ -254,10 +254,10 @@ export default function DashboardPage() {
               <button
                 type="button"
                 title="Clear Search & Filters"
-                className="w-[38px] h-[38px] flex-none flex items-center justify-center rounded-full bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:text-white transition-all text-gray-400 group cursor-pointer"
+                className="w-[32px] h-[32px] flex-none flex items-center justify-center rounded-full bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:text-white transition-all text-gray-400 group"
                 onClick={clearFilters}
               >
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="group-hover:-rotate-180 transition-transform duration-300">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="group-hover:-rotate-180 transition-transform duration-300">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </button>
@@ -266,7 +266,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Product Table (Scrollable) */}
-        <section className="flex-1 min-h-0 mb-4 flex flex-col">
+        <section className="flex-1 min-h-0 mb-4 flex flex-col relative z-0">
           <ProductTable
             products={products}
             page={page}
@@ -292,27 +292,198 @@ export default function DashboardPage() {
   );
 }
 
-/* ── Reusable Filter Select ── */
+/* ── Reusable Searchable Dropdown Filter ── */
 function FilterSelect({ label, value, onChange, options }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: string[];
 }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isOpen]);
+
+  const filteredOptions = options.filter(opt =>
+    String(opt).toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
+    <div className="flex flex-col gap-1 relative w-full" ref={dropdownRef}>
+      <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
         {label}
-        {value && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />}
+        {value && <span className="w-1 h-1 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />}
       </label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full h-full min-h-[38px] bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%20%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M5%207.5L10%2012.5L15%207.5%22%20stroke%3D%22%236B7280%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_8px_center] pr-8"
+
+      {/* Trigger */}
+      <div
+        className="w-full h-[32px] bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all cursor-pointer flex items-center justify-between"
+        onClick={() => { setIsOpen(!isOpen); if (!isOpen) setSearchTerm(""); }}
       >
-        <option value="">All</option>
-        {options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-      </select>
+        <span className="truncate pr-2">{value || "All"}</span>
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="flex-none">
+          <path d="M5 7.5L10 12.5L15 7.5" stroke="#6B7280" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <div className="absolute top-[calc(100%+4px)] left-0 z-[9999] w-full min-w-[140px] bg-gray-900 border border-gray-700 rounded-md shadow-2xl flex flex-col overflow-hidden">
+
+          {/* Top internal search */}
+          <div className="flex items-center px-2 py-1.5 border-b border-gray-800 bg-gray-900/80 sticky top-0">
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="text-gray-500 mr-1.5 flex-none">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              ref={inputRef}
+              type="text"
+              className="w-full bg-transparent border-none text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-0 p-0"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+
+          <div className="overflow-y-auto max-h-40 p-1 flex-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+            <div
+              className={`px-3 py-1.5 text-xs rounded-sm cursor-pointer transition-colors ${value === "" ? "bg-indigo-500/20 text-indigo-300" : "text-gray-300 hover:bg-gray-800"}`}
+              onClick={() => { onChange(""); setIsOpen(false); setSearchTerm(""); }}
+            >
+              All
+            </div>
+            {filteredOptions.length === 0 ? (
+              <div className="px-3 py-2 text-[10px] text-gray-500 text-center italic">No matching results</div>
+            ) : (
+              filteredOptions.map((opt) => (
+                <div
+                  key={opt}
+                  className={`px-3 py-1.5 text-xs rounded-sm cursor-pointer transition-colors ${value === String(opt) ? "bg-indigo-500/20 text-indigo-300" : "text-gray-300 hover:bg-gray-800"}`}
+                  onClick={() => { onChange(String(opt)); setIsOpen(false); setSearchTerm(""); }}
+                >
+                  {opt}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Inline Search Input (Autocomplete Combobox) ── */
+function InlineSearchInput({ label, value, onChange, options }: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState(value);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sync value from parent (e.g., when clear filters is clicked)
+  useEffect(() => {
+    setSearchTerm(value);
+  }, [value]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearchTerm(val);
+    setIsOpen(true);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      onChange(val);
+    }, 400);
+  };
+
+  const handleOptionClick = (opt: string) => {
+    setSearchTerm(opt);
+    setIsOpen(false);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    onChange(opt);
+  };
+
+  const filteredOptions = options.filter(opt =>
+    String(opt).toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="flex flex-col gap-1 relative w-full" ref={wrapperRef}>
+      <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
+        {label}
+        {value && <span className="w-1 h-1 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />}
+      </label>
+
+      <div className="relative group h-[32px] w-full">
+        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-indigo-400 transition-colors pointer-events-none">
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </span>
+        <input
+          type="text"
+          className="w-full h-full bg-gray-900 border border-gray-700 rounded-md pl-[22px] pr-5 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-inner"
+          placeholder={label}
+          value={searchTerm}
+          onChange={handleInputChange}
+          onFocus={() => setIsOpen(true)}
+          onClick={(e) => { setIsOpen(true); e.stopPropagation(); }}
+        />
+        {searchTerm && (
+          <button
+            onClick={() => { setSearchTerm(""); onChange(""); setIsOpen(false); }}
+            className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors cursor-pointer"
+          >
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        )}
+      </div>
+
+      {/* Dynamic Options List */}
+      {isOpen && filteredOptions.length > 0 && (
+        <div className="absolute top-[calc(100%+4px)] left-0 z-[9999] w-full min-w-[140px] bg-gray-900 border border-gray-700 rounded-md shadow-2xl flex flex-col overflow-hidden max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent py-1">
+          {filteredOptions.map((opt) => (
+            <div
+              key={opt}
+              className={`px-3 py-1.5 text-xs rounded-sm cursor-pointer transition-colors ${value === String(opt) ? "bg-indigo-500/20 text-indigo-300" : "text-gray-300 hover:bg-gray-800"}`}
+              onClick={(e) => { e.stopPropagation(); handleOptionClick(String(opt)); }}
+            >
+              {opt}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 } 
