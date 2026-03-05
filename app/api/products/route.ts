@@ -1,25 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Product from "@/models/Product";
-import { verifyToken } from "@/lib/auth";
-import mongoose from "mongoose";
 
 const ALLOWED_SORT = ["createdAt", "price", "cost", "year", "brand", "product_name", "sku"];
-
-const getSupplierId = (req: NextRequest) => {
-  const token = req.cookies.get("token")?.value;
-  if (!token) return null;
-  const decoded = verifyToken(token) as any;
-  return decoded ? decoded.supplierId : null;
-};
 
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
-    const supplierId = getSupplierId(req);
-    if (!supplierId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // const supplierId = getSupplierId(req);
+    // if (!supplierId) {
+    //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // }
 
     const { searchParams } = new URL(req.url);
     const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
@@ -47,7 +38,9 @@ export async function GET(req: NextRequest) {
     const costMax = searchParams.get("cost_max") ?? "";
 
     /* ---- build filter ---- */
-    const filter: Record<string, unknown> = { supplierId };
+    // const filter: Record<string, unknown> = { supplierId };
+    const filter: Record<string, unknown> = {};
+
 
     if (search) {
       filter.$or = [
@@ -62,7 +55,10 @@ export async function GET(req: NextRequest) {
     if (brandCategory) filter.brand_category = brandCategory;
     if (vehicleType) filter.vehicle_type = vehicleType;
     if (country) filter.country = country;
-    if (year) filter.year = parseInt(year);
+    if (year) {
+      const parsedYear = parseInt(year);
+      if (!isNaN(parsedYear)) filter.year = parsedYear;
+    }
     if (runflat) filter.runflat = runflat;
     if (tyreMarking) filter.tyre_marking = tyreMarking;
     if (size) filter.size = size;
@@ -73,24 +69,28 @@ export async function GET(req: NextRequest) {
     // Price range
     if (priceMin || priceMax) {
       const priceFilter: Record<string, number> = {};
-      if (priceMin) priceFilter.$gte = parseFloat(priceMin);
-      if (priceMax) priceFilter.$lte = parseFloat(priceMax);
-      filter.price = priceFilter;
+      if (priceMin && !isNaN(parseFloat(priceMin))) priceFilter.$gte = parseFloat(priceMin);
+      if (priceMax && !isNaN(parseFloat(priceMax))) priceFilter.$lte = parseFloat(priceMax);
+      if (Object.keys(priceFilter).length > 0) filter.price = priceFilter;
     }
 
     // Cost range
     if (costMin || costMax) {
       const costFilter: Record<string, number> = {};
-      if (costMin) costFilter.$gte = parseFloat(costMin);
-      if (costMax) costFilter.$lte = parseFloat(costMax);
-      filter.cost = costFilter;
+      if (costMin && !isNaN(parseFloat(costMin))) costFilter.$gte = parseFloat(costMin);
+      if (costMax && !isNaN(parseFloat(costMax))) costFilter.$lte = parseFloat(costMax);
+      if (Object.keys(costFilter).length > 0) filter.cost = costFilter;
     }
 
     const skip = (page - 1) * limit;
-    const supplierObjectId = new mongoose.Types.ObjectId(supplierId);
+
+    // if (!mongoose.Types.ObjectId.isValid(supplierId)) {
+    //   return NextResponse.json({ error: "Invalid supplier ID format" }, { status: 400 });
+    // }
+    // const supplierObjectId = new mongoose.Types.ObjectId(supplierId);
 
     /* ---- parallel queries ---- */
-    const [products, total, summaryAgg, filterDistincts] = await Promise.all([
+    const [products, total, summaryAgg] = await Promise.all([
       Product.find(filter)
         .sort({ [sortBy]: sortOrder })
         .skip(skip)
@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
       Product.countDocuments(filter),
 
       Product.aggregate([
-        { $match: { supplierId: supplierObjectId } },
+        // { $match: { supplierId: supplierObjectId } },
         {
           $group: {
             _id: null,
@@ -108,6 +108,16 @@ export async function GET(req: NextRequest) {
             averagePrice: { $avg: "$price" },
             averageCost: { $avg: "$cost" },
             brands: { $addToSet: "$brand" },
+            brandCategories: { $addToSet: "$brand_category" },
+            vehicleTypes: { $addToSet: "$vehicle_type" },
+            countries: { $addToSet: "$country" },
+            years: { $addToSet: "$year" },
+            runflatOpts: { $addToSet: "$runflat" },
+            tyreMarkings: { $addToSet: "$tyre_marking" },
+            sizes: { $addToSet: "$size" },
+            plainSizes: { $addToSet: "$plain_size" },
+            loadIndexes: { $addToSet: "$load_index" },
+            sourceNames: { $addToSet: "$source_name" },
           },
         },
         {
@@ -117,34 +127,44 @@ export async function GET(req: NextRequest) {
             averagePrice: { $round: ["$averagePrice", 2] },
             averageCost: { $round: ["$averageCost", 2] },
             totalBrands: { $size: "$brands" },
+            brands: 1,
+            brandCategories: 1,
+            vehicleTypes: 1,
+            countries: 1,
+            years: 1,
+            runflatOpts: 1,
+            tyreMarkings: 1,
+            sizes: 1,
+            plainSizes: 1,
+            loadIndexes: 1,
+            sourceNames: 1,
           },
         },
       ]),
-
-      // Collect all distinct filter values for the supplier
-      Promise.all([
-        Product.distinct("brand", { supplierId }),
-        Product.distinct("brand_category", { supplierId }),
-        Product.distinct("vehicle_type", { supplierId }),
-        Product.distinct("country", { supplierId }),
-        Product.distinct("year", { supplierId }),
-        Product.distinct("runflat", { supplierId }),
-        Product.distinct("tyre_marking", { supplierId }),
-        Product.distinct("size", { supplierId }),
-        Product.distinct("plain_size", { supplierId }),
-        Product.distinct("load_index", { supplierId }),
-        Product.distinct("source_name", { supplierId }),
-      ]),
     ]);
 
-    const summary = summaryAgg[0] ?? {
-      totalProducts: 0,
-      averagePrice: 0,
-      averageCost: 0,
-      totalBrands: 0,
+    const summaryData = summaryAgg[0] || {};
+
+    const summary = {
+      totalProducts: summaryData.totalProducts || 0,
+      averagePrice: summaryData.averagePrice || 0,
+      averageCost: summaryData.averageCost || 0,
+      totalBrands: summaryData.totalBrands || 0,
     };
 
-    const [brands, brandCategories, vehicleTypes, countries, years, runflatOpts, tyreMarkings, sizes, plainSizes, loadIndexes, sourceNames] = filterDistincts;
+    const brands = summaryData.brands || [];
+    const brandCategories = summaryData.brandCategories || [];
+    const vehicleTypes = summaryData.vehicleTypes || [];
+    const countries = summaryData.countries || [];
+    const years = summaryData.years || [];
+    const runflatOpts = summaryData.runflatOpts || [];
+    const tyreMarkings = summaryData.tyreMarkings || [];
+    const sizes = summaryData.sizes || [];
+    const plainSizes = summaryData.plainSizes || [];
+    const loadIndexes = summaryData.loadIndexes || [];
+    const sourceNames = summaryData.sourceNames || [];
+
+    console.log(`[DEBUG] GET /api/products — found ${total} products, returning ${products.length} on page ${page}`);
 
     return NextResponse.json({
       products,
@@ -166,23 +186,21 @@ export async function GET(req: NextRequest) {
         sourceNames: (sourceNames as string[]).filter(Boolean).sort(),
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("GET /api/products error:", error);
-    return NextResponse.json({ error: "Failed to fetch products" }, { status: 500 });
+    return NextResponse.json({
+      error: error.message || "Failed to fetch products",
+      details: error.toString()
+    }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
-    const supplierId = getSupplierId(req);
-    if (!supplierId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const data = await req.json();
-    const productData = { ...data, supplierId };
-    const newProduct = await Product.create(productData);
+    const newProduct = await Product.create(data);
 
     return NextResponse.json({ success: true, product: newProduct }, { status: 201 });
   } catch (error: any) {

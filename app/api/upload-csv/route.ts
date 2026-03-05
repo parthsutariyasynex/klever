@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Product from "@/models/Product";
-import { verifyToken } from "@/lib/auth";
 
 const ALL_COLUMNS = [
   "klever_sku", "product_source", "source_name", "sku", "product_url",
@@ -15,22 +14,13 @@ const NUMERIC_FIELDS = ["cost", "price", "set_price", "fitting_price", "year"];
 
 export async function POST(req: NextRequest) {
   try {
+    // console.log("API HIT");
     await connectDB();
-
-    const token = req.cookies.get("token")?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const decoded = verifyToken(token) as any;
-    if (!decoded?.supplierId) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
-    }
-
-    const supplierId = decoded.supplierId;
+    // console.log("DB Connected");
     const body = await req.json();
+    // console.log("Body: ", body);
     const rows: Record<string, string>[] = body.data;
-
+    // console.log("Rows length:", rows.length);
     if (!Array.isArray(rows) || rows.length === 0) {
       return NextResponse.json({ error: "No data provided" }, { status: 400 });
     }
@@ -49,9 +39,9 @@ export async function POST(req: NextRequest) {
     const skipped: { row: number; reason: string }[] = [];
     const failed: { row: number; reason: string }[] = [];
 
-    // Get existing SKUs for this supplier
+    // Get existing SKUs
     const existingSkus = new Set(
-      (await Product.find({ supplierId }, { sku: 1 }).lean()).map((p: any) => p.sku)
+      (await Product.find({}, { sku: 1 }).lean()).map((p: any) => p.sku)
     );
 
     for (let i = 0; i < rows.length; i++) {
@@ -73,7 +63,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Build document from whatever columns exist
-      const doc: Record<string, any> = { supplierId };
+      const doc: Record<string, any> = {};
       for (const col of ALL_COLUMNS) {
         if (NUMERIC_FIELDS.includes(col)) {
           const num = parseFloat(raw[col]);

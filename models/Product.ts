@@ -31,7 +31,7 @@ export interface IProductDoc extends Document {
 
 const ProductSchema = new Schema<IProductDoc>(
   {
-    supplierId: { type: Schema.Types.ObjectId, ref: "Supplier", required: true, index: true },
+    supplierId: { type: Schema.Types.ObjectId, ref: "Supplier", required: false, index: true },
     klever_sku: { type: String, default: "" },
     product_source: { type: String, default: "" },
     source_name: { type: String, default: "" },
@@ -60,15 +60,15 @@ const ProductSchema = new Schema<IProductDoc>(
 );
 
 // ── Indexes for fast queries ──
-ProductSchema.index({ supplierId: 1, sku: 1 }, { unique: true });
-ProductSchema.index({ supplierId: 1, brand: 1 });
-ProductSchema.index({ supplierId: 1, brand_category: 1 });
-ProductSchema.index({ supplierId: 1, vehicle_type: 1 });
-ProductSchema.index({ supplierId: 1, country: 1 });
-ProductSchema.index({ supplierId: 1, year: 1 });
-ProductSchema.index({ supplierId: 1, price: 1 });
-ProductSchema.index({ supplierId: 1, cost: 1 });
-ProductSchema.index({ supplierId: 1, klever_sku: 1 });
-ProductSchema.index({ supplierId: 1, createdAt: -1 });
+ProductSchema.index({ sku: 1 }, { unique: true });
+ProductSchema.index({ brand: 1 });
+ProductSchema.index({ brand_category: 1 });
+ProductSchema.index({ vehicle_type: 1 });
+ProductSchema.index({ country: 1 });
+ProductSchema.index({ year: 1 });
+ProductSchema.index({ price: 1 });
+ProductSchema.index({ cost: 1 });
+ProductSchema.index({ klever_sku: 1 });
+ProductSchema.index({ createdAt: -1 });
 
 export default mongoose.models.Product || mongoose.model<IProductDoc>("Product", ProductSchema);
