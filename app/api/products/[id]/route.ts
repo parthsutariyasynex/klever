@@ -23,9 +23,9 @@ export async function PUT(
       { new: true, runValidators: true }
     ).lean();
 
-    if (!product) {
-      return NextResponse.json({ error: "Product not found" }, { status: 404 });
-    }
+    // if (!product) {
+    //   return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    // }
 
     return NextResponse.json({ success: true, product });
   } catch (error: any) {

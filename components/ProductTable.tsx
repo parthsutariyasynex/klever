@@ -73,7 +73,7 @@ function ProductTable({ products, page, sortBy, sortOrder, onSort, onDelete }: P
                             {COLUMNS.map((col) => (
                                 <th
                                     key={col.key}
-                                    className={`px-4 py-4 text-[16px] font-bold text-gray-200 uppercase tracking-wider border-b border-gray-800 ${col.sortable
+                                    className={`px-3 py-3.5 text-[11px] sm:text-xs font-bold text-gray-300 uppercase tracking-wider border-b border-gray-800 ${col.sortable
                                         ? "cursor-pointer hover:bg-gray-800/50 hover:text-white transition-colors"
                                         : ""
                                         } ${(col as any).align === "right" ? "text-right" : "text-left"} ${col.width}`}
@@ -94,31 +94,31 @@ function ProductTable({ products, page, sortBy, sortOrder, onSort, onDelete }: P
                                 className={`hover:bg-gray-800/40 transition-colors ${deletingId === p._id ? "opacity-50 pointer-events-none" : ""
                                     }`}
                             >
-                                <td className="px-4 py-3 text-gray-400 align-middle">{p.source_name || "—"}</td>
+                                <td className="px-3 py-2.5 text-gray-400 align-middle text-[13px]">{p.source_name || "—"}</td>
 
-                                <td className="px-4 py-3 align-middle">
-                                    <span className="px-2.5 py-1 bg-gray-900 border border-gray-700 rounded-md text-xs text-gray-300 font-mono tracking-wide selection:bg-indigo-500/30 inline-block break-all">
+                                <td className="px-3 py-2.5 align-middle">
+                                    <span className="px-2 py-1 bg-gray-900 border border-gray-700 rounded-md text-[11px] text-gray-300 font-mono tracking-wide selection:bg-indigo-500/30 inline-block break-all">
                                         {p.sku || "—"}
                                     </span>
                                 </td>
 
-                                <td className="px-4 py-3 text-gray-400 align-middle">{p.brand_category || "—"}</td>
+                                <td className="px-3 py-2.5 text-gray-400 align-middle text-[13px]">{p.brand_category || "—"}</td>
 
-                                <td className="px-4 py-3 align-middle">
-                                    <span className="text-indigo-400 font-semibold uppercase tracking-wider text-[14px]">
+                                <td className="px-3 py-2.5 align-middle">
+                                    <span className="text-indigo-400 font-semibold uppercase tracking-wider text-[13px]">
                                         {p.brand || "—"}
                                     </span>
                                 </td>
 
-                                <td className="px-4 py-3 text-gray-200 font-medium selection:bg-indigo-500/30 align-middle">
+                                <td className="px-3 py-2.5 text-gray-200 font-medium selection:bg-indigo-500/30 align-middle text-[13px]">
                                     {p.product_name || "—"}
                                 </td>
 
-                                <td className="px-4 py-3 text-gray-300 font-medium align-middle">{p.size || "—"}</td>
+                                <td className="px-3 py-2.5 text-gray-300 font-medium align-middle text-[13px]">{p.size || "—"}</td>
 
-                                <td className="px-4 py-3 align-middle">
+                                <td className="px-3 py-2.5 align-middle">
                                     <span
-                                        className={`px-2.5 py-1 rounded-md text-xs font-bold tracking-wider uppercase inline-block ${p.runflat?.toLowerCase() === "yes"
+                                        className={`px-2 py-1 rounded-md text-[10px] sm:text-[11px] font-bold tracking-wider uppercase inline-block ${p.runflat?.toLowerCase() === "yes"
                                             ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                                             : "bg-gray-800 text-gray-500 border border-gray-700"
                                             }`}
@@ -127,19 +127,19 @@ function ProductTable({ products, page, sortBy, sortOrder, onSort, onDelete }: P
                                     </span>
                                 </td>
 
-                                <td className="px-4 py-3 text-gray-300 text-right align-middle">{p.year || "—"}</td>
+                                <td className="px-3 py-2.5 text-gray-300 text-right align-middle text-[13px]">{p.year || "—"}</td>
 
-                                <td className="px-4 py-3 text-gray-400 align-middle">{p.country || "—"}</td>
+                                <td className="px-3 py-2.5 text-gray-400 align-middle text-[13px]">{p.country || "—"}</td>
 
-                                <td className="px-4 py-3 text-gray-300 font-mono text-right align-middle">
+                                <td className="px-3 py-2.5 text-gray-300 font-mono text-right align-middle text-[13px]">
                                     {(p as any).qty ?? 0}
                                 </td>
 
-                                <td className="px-4 py-3 text-emerald-400 font-mono font-medium text-right align-middle">{formatCurrency(p.cost)}</td>
+                                <td className="px-3 py-2.5 text-emerald-400 font-mono font-medium text-right align-middle text-[13px]">{formatCurrency(p.cost)}</td>
 
-                                <td className="px-4 py-3 text-gray-300 font-mono text-right align-middle">{formatCurrency(p.fitting_price)}</td>
+                                <td className="px-3 py-2.5 text-gray-300 font-mono text-right align-middle text-[13px]">{formatCurrency(p.fitting_price)}</td>
 
-                                <td className="px-4 py-3 text-gray-500 font-mono align-middle">
+                                <td className="px-3 py-2.5 text-gray-500 font-mono align-middle text-[12px]">
                                     {p.source_date
                                         ? new Date(p.source_date).toISOString().split("T")[0]
                                         : "—"}

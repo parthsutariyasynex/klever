@@ -52,7 +52,7 @@ function transformRow(row: CSVRow): Partial<ProductType> {
     offers: row.offers ? String(row.offers).trim() : undefined,
     brand: row.brand ? String(row.brand).trim() : undefined,
     brand_category: row.brand_category ? String(row.brand_category).trim() : undefined,
-    plain_size: row.plain_size ? String(row.plain_size).trim() : undefined,
+    plain_size: row.plain_size ? String(row.plain_size).trim() : (row.size ? String(row.size).replace(/[^0-9]/g, "") : undefined),
     size: row.size ? String(row.size).trim() : undefined,
     load_index: parseNumber(row.load_index),
     runflat: parseBoolean(row.runflat),

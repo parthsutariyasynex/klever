@@ -28,8 +28,11 @@ export default function DashboardPage() {
   const [brandCategory, setBrandCategory] = useState("");
   const [brand, setBrand] = useState("");
   const [size, setSize] = useState("");
+  const [sizeInput, setSizeInput] = useState("");
   const [year, setYear] = useState("");
+  const [yearInput, setYearInput] = useState("");
   const [qty, setQty] = useState("");
+  const [qtyInput, setQtyInput] = useState("");
   const [latest, setLatest] = useState(false);
 
   // Sort
@@ -67,6 +70,8 @@ export default function DashboardPage() {
       if (!res.ok) throw new Error("Failed to fetch products");
 
       const data: ProductsApiResponse = await res.json();
+      console.log("API DATA:", data);
+      console.log("PRODUCTS:", data.products);
       setProducts(data.products);
       setTotalPages(data.totalPages);
       setTotal(data.total);
@@ -88,11 +93,25 @@ export default function DashboardPage() {
     debounceRef.current = setTimeout(() => { setSearch(value); setPage(1); }, 400);
   };
 
+  const sizeDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const handleSizeChange = (value: string) => {
+    setSizeInput(value);
+    if (sizeDebounceRef.current) clearTimeout(sizeDebounceRef.current);
+    sizeDebounceRef.current = setTimeout(() => { setSize(value); setPage(1); }, 400);
+  };
+
+  const yearDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const handleYearChange = (value: string) => {
+    setYearInput(value);
+    if (yearDebounceRef.current) clearTimeout(yearDebounceRef.current);
+    yearDebounceRef.current = setTimeout(() => { setYear(value); setPage(1); }, 400);
+  };
+
   const qtyDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const handleQtyChange = (value: string) => {
-    setQty(value);
+    setQtyInput(value);
     if (qtyDebounceRef.current) clearTimeout(qtyDebounceRef.current);
-    qtyDebounceRef.current = setTimeout(() => { setPage(1); }, 400);
+    qtyDebounceRef.current = setTimeout(() => { setQty(value); setPage(1); }, 400);
   };
 
   /* ── Handlers ── */
@@ -118,7 +137,10 @@ export default function DashboardPage() {
 
   const clearFilters = () => {
     setSourceName(""); setBrandCategory(""); setBrand("");
-    setSize(""); setYear(""); setQty(""); setLatest(false);
+    setSize(""); setSizeInput("");
+    setYear(""); setYearInput("");
+    setQty(""); setQtyInput("");
+    setLatest(false);
     setSearch(""); setSearchInput("");
     setPage(1);
   };
@@ -201,8 +223,37 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="min-w-[60px] flex-1"><InlineSearchInput label="Size" value={size} onChange={(v) => { setSize(v); setPage(1); }} options={filterOptions.sizes} /></div>
-            <div className="min-w-[50px] flex-1"><InlineSearchInput label="Year" value={year} onChange={(v) => { setYear(v); setPage(1); }} options={filterOptions.years.map(String)} /></div>
+            {/* <div className="min-w-[60px] flex-1"><InlineSearchInput label="Size" value={size} onChange={(v) => { setSize(v); setPage(1); }} options={filterOptions.sizes} /></div> */}
+
+            <div className="flex flex-col gap-1 min-w-[60px] flex-1">
+              <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase">
+                Size
+              </label>
+              <input
+                type="text"
+                placeholder="Size..."
+                className="w-full h-[32px] bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                value={sizeInput}
+                onChange={(e) => handleSizeChange(e.target.value)}
+              />
+            </div>
+
+
+            {/* <div className="min-w-[50px] flex-1"><InlineSearchInput label="Year" value={year} onChange={(v) => { setYear(v); setPage(1); }} options={filterOptions.years.map(String)} /></div> */}
+
+
+            <div className="flex flex-col gap-1 min-w-[50px] flex-1">
+              <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase">
+                Year
+              </label>
+              <input
+                type="text"
+                placeholder="Year..."
+                className="w-full h-[32px] bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                value={yearInput}
+                onChange={(e) => handleYearChange(e.target.value)}
+              />
+            </div>
 
             {/* Qty Input */}
             <div className="flex flex-col gap-1 min-w-[40px] flex-[0.8]">
@@ -214,7 +265,7 @@ export default function DashboardPage() {
                 type="number"
                 placeholder="Qty..."
                 className="w-full h-[32px] bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono"
-                value={qty}
+                value={qtyInput}
                 onChange={(e) => handleQtyChange(e.target.value)}
               />
             </div>

@@ -31,7 +31,7 @@ export async function GET() {
     // console.error("GET UPLOAD DATA ERROR:", error);
 
     return NextResponse.json(
-    //   { success: false, message: error.message },
+      //   { success: false, message: error.message },
       { status: 500 }
     );
   }

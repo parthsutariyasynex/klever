@@ -23,6 +23,7 @@ export interface IProductDoc extends Document {
   vehicle_type: string;
   country: string;
   year: number;
+  qty: number;
   product_image_url: string;
   source_date: string;
   createdAt: Date;
@@ -53,6 +54,7 @@ const ProductSchema = new Schema<IProductDoc>(
     vehicle_type: { type: String, default: "" },
     country: { type: String, default: "" },
     year: { type: Number, default: 0 },
+    qty: { type: Number, default: 0 },
     product_image_url: { type: String, default: "" },
     source_date: { type: String, default: "" },
   },
@@ -60,15 +62,10 @@ const ProductSchema = new Schema<IProductDoc>(
 );
 
 // ── Indexes for fast queries ──
-// ProductSchema.index({ sku: 1 }, { unique: true });
-// ProductSchema.index({ brand: 1 });
-// ProductSchema.index({ brand_category: 1 });
-// ProductSchema.index({ vehicle_type: 1 });
-// ProductSchema.index({ country: 1 });
-// ProductSchema.index({ year: 1 });
-// ProductSchema.index({ price: 1 });
-// ProductSchema.index({ cost: 1 });
-// ProductSchema.index({ klever_sku: 1 });
+ProductSchema.index({ brand: 1 });
+ProductSchema.index({ plain_size: 1 });
+ProductSchema.index({ year: 1 });
+ProductSchema.index({ source_name: 1 });
 ProductSchema.index({ createdAt: -1 });
 
 export default mongoose.models.Product || mongoose.model<IProductDoc>("Product", ProductSchema);
