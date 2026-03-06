@@ -60,15 +60,15 @@ const ProductSchema = new Schema<IProductDoc>(
 );
 
 // ── Indexes for fast queries ──
-ProductSchema.index({ sku: 1 }, { unique: true });
-ProductSchema.index({ brand: 1 });
-ProductSchema.index({ brand_category: 1 });
-ProductSchema.index({ vehicle_type: 1 });
-ProductSchema.index({ country: 1 });
-ProductSchema.index({ year: 1 });
-ProductSchema.index({ price: 1 });
-ProductSchema.index({ cost: 1 });
-ProductSchema.index({ klever_sku: 1 });
+// ProductSchema.index({ sku: 1 }, { unique: true });
+// ProductSchema.index({ brand: 1 });
+// ProductSchema.index({ brand_category: 1 });
+// ProductSchema.index({ vehicle_type: 1 });
+// ProductSchema.index({ country: 1 });
+// ProductSchema.index({ year: 1 });
+// ProductSchema.index({ price: 1 });
+// ProductSchema.index({ cost: 1 });
+// ProductSchema.index({ klever_sku: 1 });
 ProductSchema.index({ createdAt: -1 });
 
 export default mongoose.models.Product || mongoose.model<IProductDoc>("Product", ProductSchema);

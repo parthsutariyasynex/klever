@@ -142,15 +142,15 @@ export default function DashboardPage() {
 
   return (
     <div className="h-screen flex flex-col bg-[#0a0f1c] text-white overflow-hidden">
-      <div className="max-w-[1600px] w-full mx-auto px-4 md:px-8 flex flex-col h-full">
+      <div className="w-full mx-auto px-4 md:px-6 flex flex-col h-full">
         {/* Header (Fixed) */}
-        <header className="flex-none flex items-center justify-between py-4 md:py-5 border-b border-gray-800 mb-5 flex-wrap gap-4">
+        <header className="flex-none flex items-center justify-between py-3 border-b border-gray-800 flex-wrap gap-4">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-500/20">
                 K
               </div>
-              <span className="text-2xl font-semibold tracking-tight text-white">Klever || Supplier Product Management</span>
+              <span className="text-2xl font-semibold tracking-tight text-white">Klever</span>
             </div>
 
           </div>
@@ -160,16 +160,16 @@ export default function DashboardPage() {
         </header>
 
         {error && (
-          <div className="flex-none flex items-center justify-between bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
+          <div className="flex-none flex items-center justify-between bg-red-500/10 border border-red-500/30 rounded-lg p-3 my-2">
             <span className="text-red-400 text-sm font-medium">{error}</span>
             <button className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-md text-sm font-medium transition-colors" onClick={fetchProducts}>Retry</button>
           </div>
         )}
 
         {/* Filters Grid Section (Directly Visible) */}
-        <section className="flex-none mb-4 bg-gray-900/50 p-5 rounded-xl border border-gray-800 backdrop-blur-sm shadow-sm transition-all relative z-50">
+        <section className="flex-none mt-3 mb-3 bg-gray-900/50 p-4 rounded-xl border border-gray-800 backdrop-blur-sm shadow-sm transition-all relative z-50">
 
-          <div className="flex flex-row items-end flex-nowrap w-full overflow-visible pb-1 gap-2">
+          <div className="flex flex-row items-end flex-nowrap w-full overflow-visible gap-2">
 
             <div className="min-w-[60px] flex-[1.5]"><FilterSelect label="Supplier" value={sourceName} onChange={(v) => { setSourceName(v); setPage(1); }} options={filterOptions.sourceNames} /></div>
             <div className="min-w-[60px] flex-[1.5]">
