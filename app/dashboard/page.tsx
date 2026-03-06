@@ -70,8 +70,11 @@ export default function DashboardPage() {
       if (!res.ok) throw new Error("Failed to fetch products");
 
       const data: ProductsApiResponse = await res.json();
+
       console.log("API DATA:", data);
       console.log("PRODUCTS:", data.products);
+
+
       setProducts(data.products);
       setTotalPages(data.totalPages);
       setTotal(data.total);
@@ -148,19 +151,6 @@ export default function DashboardPage() {
   const activeFilterCount = [sourceName, brandCategory, brand, size, year, qty, latest ? "true" : ""]
     .filter(Boolean).length;
 
-  /* ══════════════════════════
-     Render
-  ══════════════════════════ */
-  if (loading && products.length === 0) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center bg-[#0a0f1c]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-          <p className="text-gray-400 font-medium">Loading products...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="h-screen flex flex-col bg-[#0a0f1c] text-white overflow-hidden">

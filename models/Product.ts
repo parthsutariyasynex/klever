@@ -16,7 +16,7 @@ export interface IProductDoc extends Document {
   offers: string;
   brand: string;
   brand_category: string;
-  plain_size: string;
+  plain_size: number;
   size: string;
   load_index: string;
   runflat: string;
@@ -47,7 +47,7 @@ const ProductSchema = new Schema<IProductDoc>(
     offers: { type: String, default: "" },
     brand: { type: String, default: "" },
     brand_category: { type: String, default: "" },
-    plain_size: { type: String, default: "" },
+    plain_size: { type: Number, default: 0 },
     size: { type: String, default: "" },
     load_index: { type: String, default: "" },
     runflat: { type: String, default: "" },

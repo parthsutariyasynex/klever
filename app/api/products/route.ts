@@ -55,38 +55,47 @@ export async function GET(req: NextRequest) {
     //     { size: { $regex: search, $options: "i" } },
     //   ];
     // }
-    /* SEARCH */
+    /* SEARCH (Tyre Pattern / SKU / etc) */
     if (search) {
-      console.log(`\n[SIZE DEBUG] --- Processing Search Input ---`);
-      console.log(`[SIZE DEBUG] Raw Search String Received: "${search}"`);
+      const searchTerms = search.split(",").map(s => s.trim()).filter(Boolean);
+      const searchOrConditions = searchTerms.map(term => {
+        const numericString = term.replace(/\D/g, "");
+        const normalizedSize = numericString ? Number(numericString) : null;
 
-      const numericString = search.replace(/\D/g, "");
-      const normalizedSize = numericString ? Number(numericString) : null;
+        const termConditions: any[] = [
+          { product_name: { $regex: term, $options: "i" } },
+          { brand: { $regex: term, $options: "i" } },
+          { sku: { $regex: term, $options: "i" } },
+          { size: { $regex: term, $options: "i" } },
+        ];
 
-      console.log(`[SIZE DEBUG] Extracted Numerics: "${numericString}" -> Converted To Number: ${normalizedSize}`);
+        if (normalizedSize !== null) {
+          termConditions.push({ plain_size: normalizedSize });
+        }
 
-      const orConditions: any[] = [
-        { product_name: { $regex: search, $options: "i" } },
-        { brand: { $regex: search, $options: "i" } },
-        { sku: { $regex: search, $options: "i" } },
-        { size: { $regex: search, $options: "i" } },
-      ];
+        return { $or: termConditions };
+      });
 
-      if (normalizedSize !== null) {
-        orConditions.push({ plain_size: normalizedSize });
-        console.log(`[SIZE DEBUG] Appended to $or conditions: { plain_size: ${normalizedSize} }`);
-      } else {
-        console.log(`[SIZE DEBUG] Skipped plain_size matching inside $or since no valid number was found.`);
+      if (searchOrConditions.length > 0) {
+        filter.$and = filter.$and || [];
+        filter.$and.push({ $or: searchOrConditions });
       }
-
-      filter.$or = orConditions;
     }
 
-    /* BASIC FILTERS */
-    if (brand) filter.brand = { $regex: brand, $options: "i" };
+    /* BASIC FILTERS with Comma Support */
+    if (brand) {
+      const brands = brand.split(",").map(b => b.trim()).filter(Boolean);
+      filter.brand = { $in: brands.map(b => new RegExp(b.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")) };
+    }
+
     if (brandCategory) filter.brand_category = brandCategory;
     if (vehicleType) filter.vehicle_type = vehicleType;
-    if (country) filter.country = country;
+
+    if (country) {
+      const countries = country.split(",").map(c => c.trim()).filter(Boolean);
+      filter.country = { $in: countries.map(c => new RegExp(c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")) };
+    }
+
     if (runflat) filter.runflat = runflat;
     if (tyreMarking) filter.tyre_marking = tyreMarking;
     if (loadIndex) filter.load_index = loadIndex;
@@ -94,14 +103,28 @@ export async function GET(req: NextRequest) {
 
     /* YEAR */
     if (year) {
-      const parsedYear = parseInt(year);
-      if (!isNaN(parsedYear)) filter.year = parsedYear;
+      const years = year.split(",").map(y => parseInt(y.trim())).filter(y => !isNaN(y));
+      if (years.length > 0) {
+        filter.year = { $in: years };
+      }
     }
 
     /* SIZE FILTER */
     if (size) {
-      const escaped = size.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      filter.size = { $regex: escaped, $options: "i" };
+      const sizes = size.split(",").map(s => s.trim()).filter(Boolean);
+      const sizeOrConditions = sizes.map(sz => {
+        if (/^\d+$/.test(sz)) {
+          return { plain_size: Number(sz) };
+        } else {
+          const escaped = sz.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          return { size: { $regex: escaped, $options: "i" } };
+        }
+      });
+
+      if (sizeOrConditions.length > 0) {
+        filter.$and = filter.$and || [];
+        filter.$and.push({ $or: sizeOrConditions });
+      }
     } else if (plainSize) {
       filter.plain_size = Number(plainSize);
     }
