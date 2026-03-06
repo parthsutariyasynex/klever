@@ -59,8 +59,7 @@ export async function GET(req: NextRequest) {
     if (search) {
       const searchTerms = search.split(",").map(s => s.trim()).filter(Boolean);
       const searchOrConditions = searchTerms.map(term => {
-        const numericString = term.replace(/\D/g, "");
-        const normalizedSize = numericString ? Number(numericString) : null;
+        const numericString = term.replace(/\\D/g, "");
 
         const termConditions: any[] = [
           { product_name: { $regex: term, $options: "i" } },
@@ -69,8 +68,15 @@ export async function GET(req: NextRequest) {
           { size: { $regex: term, $options: "i" } },
         ];
 
-        if (normalizedSize !== null) {
-          termConditions.push({ plain_size: normalizedSize });
+        if (numericString) {
+          termConditions.push({
+            $expr: {
+              $regexMatch: {
+                input: { $toString: "$plain_size" },
+                regex: numericString
+              }
+            }
+          });
         }
 
         return { $or: termConditions };
@@ -113,10 +119,18 @@ export async function GET(req: NextRequest) {
     if (size) {
       const sizes = size.split(",").map(s => s.trim()).filter(Boolean);
       const sizeOrConditions = sizes.map(sz => {
-        if (/^\d+$/.test(sz)) {
-          return { plain_size: Number(sz) };
+        const numericOnly = sz.replace(/\\D/g, "");
+        if (numericOnly) {
+          return {
+            $expr: {
+              $regexMatch: {
+                input: { $toString: "$plain_size" },
+                regex: numericOnly
+              }
+            }
+          };
         } else {
-          const escaped = sz.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const escaped = sz.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&");
           return { size: { $regex: escaped, $options: "i" } };
         }
       });
@@ -179,16 +193,16 @@ export async function GET(req: NextRequest) {
 
     const skip = (page - 1) * limit;
 
-    console.log("\n=========================================");
-    console.log("           MONGOOSE EXECUTION DEBUGS       ");
-    console.log("=========================================");
-    console.log("1. Request Query Params: ", Object.fromEntries(searchParams.entries()));
-    console.log("2. Generated MongoDB Filter Object:");
-    console.dir(filter, { depth: null, colors: true });
-    console.log("3. Pagination & Sorting:");
-    console.log(`   Page: ${page}, Limit: ${limit}, Skip: ${skip}`);
-    console.log(`   Sort: { "${sortBy}": ${sortOrder} }`);
-    console.log("=========================================\n");
+    // console.log("\n=========================================");
+    // console.log("           MONGOOSE EXECUTION DEBUGS       ");
+    // console.log("=========================================");
+    // console.log("1. Request Query Params: ", Object.fromEntries(searchParams.entries()));
+    // console.log("2. Generated MongoDB Filter Object:");
+    console.dir(filter, { depth: null });
+    // console.log("3. Pagination & Sorting:");
+    // console.log(`   Page: ${page}, Limit: ${limit}, Skip: ${skip}`);
+    // console.log(`   Sort: { "${sortBy}": ${sortOrder} }`);
+    // console.log("=========================================\n");
 
     const [products, total, summaryAgg] = await Promise.all([
       Product.find(filter)

@@ -6,6 +6,7 @@ import { useToast } from "./ToastProvider";
 
 interface ProductTableProps {
     products: IProduct[];
+    // loading: boolean;
     page: number;
     sortBy: string;
     sortOrder: "asc" | "desc";
@@ -151,14 +152,23 @@ function ProductTable({ products, page, sortBy, sortOrder, onSort, onDelete }: P
                 </table>
             </div>
 
-            {products.length === 0 && (
+            {/* {products.length === 0 && (
                 <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-gray-500">
-                    <p className="text-lg font-medium text-gray-400">No products found</p>
-                    <p className="mt-1 text-sm">
-                        Try adjusting your search or filters, or upload a CSV file.
-                    </p>
+                    {loading ? (
+                        <>
+                            <div className="w-8 h-8 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                            <p className="mt-3 text-sm font-medium text-gray-400">Loading products...</p>
+                        </>
+                    ) : (
+                        <>
+                            <p className="text-lg font-medium text-gray-400">No products found</p>
+                            <p className="mt-1 text-sm">
+                                Try adjusting your search or filters, or upload a CSV file.
+                            </p>
+                        </>
+                    )}
                 </div>
-            )}
+            )} */}
         </div>
     );
 
