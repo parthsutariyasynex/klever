@@ -6,7 +6,7 @@ import { useToast } from "./ToastProvider";
 
 interface ProductTableProps {
     products: IProduct[];
-    // loading: boolean;
+    loading: boolean;
     page: number;
     sortBy: string;
     sortOrder: "asc" | "desc";
@@ -34,7 +34,7 @@ function formatCurrency(val: number) {
     return val != null ? `${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—";
 }
 
-function ProductTable({ products, page, sortBy, sortOrder, onSort, onDelete }: ProductTableProps) {
+function ProductTable({ products, loading, page, sortBy, sortOrder, onSort, onDelete }: ProductTableProps) {
     const perPage = 200;
     const { toast } = useToast();
     const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -152,7 +152,7 @@ function ProductTable({ products, page, sortBy, sortOrder, onSort, onDelete }: P
                 </table>
             </div>
 
-            {/* {products.length === 0 && (
+            {products.length === 0 && (
                 <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-gray-500">
                     {loading ? (
                         <>
@@ -168,7 +168,7 @@ function ProductTable({ products, page, sortBy, sortOrder, onSort, onDelete }: P
                         </>
                     )}
                 </div>
-            )} */}
+            )}
         </div>
     );
 

@@ -310,6 +310,7 @@ export default function DashboardPage() {
         <section className="flex-1 min-h-0 mb-4 flex flex-col relative z-0">
           <ProductTable
             products={products}
+            loading={loading}
             page={page}
             sortBy={sortBy}
             sortOrder={sortOrder}
