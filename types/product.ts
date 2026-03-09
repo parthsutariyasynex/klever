@@ -24,6 +24,7 @@ export interface IProduct {
     product_image_url: string;
     source_date: string;
     createdAt: string;
+    qty?: number;
 }
 
 export interface Summary {
