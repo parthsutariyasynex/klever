@@ -21,19 +21,19 @@ global._mongooseCache = cached;
 
 export default async function connectDB(): Promise<typeof mongoose> {
   if (cached.conn) {
-    console.log("✅ Using cached MongoDB connection");
+    console.log("Using cached MongoDB connection");
     return cached.conn;
   }
 
 
   if (!cached.promise) {
-    console.log("🔄 Connecting to MongoDB...");
+    console.log("Connecting to MongoDB...");
     cached.promise = mongoose.connect(MONGODB_URI, {
       bufferCommands: false,
     });
   }
 
   cached.conn = await cached.promise;
-  console.log("🔄 Connected to MongoDB...");
+  console.log("Connected to MongoDB...");
   return cached.conn;
 }
