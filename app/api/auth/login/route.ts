@@ -39,3 +39,11 @@
 //         return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
 //     }
 // }
+
+import { NextResponse } from "next/server";
+
+export async function POST() {
+    return NextResponse.json({
+        message: "Login disabled",
+    });
+}

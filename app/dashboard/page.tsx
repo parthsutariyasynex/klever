@@ -127,10 +127,10 @@ export default function DashboardPage() {
     setPage(1);
   }, []);
 
-  // const handleDelete = useCallback((id: string) => {
-  //   setProducts((prev) => prev.filter((p) => p._id !== id));
-  //   setTotal((prev) => prev - 1);
-  // }, []);
+  const handleDelete = useCallback((id: string) => {
+    setProducts((prev) => prev.filter((p) => p._id !== id));
+    setTotal((prev) => prev - 1);
+  }, []);
 
   const handleUploadComplete = useCallback(() => {
     setPage(1);
@@ -315,7 +315,7 @@ export default function DashboardPage() {
             sortBy={sortBy}
             sortOrder={sortOrder}
             onSort={handleSort}
-          // onDelete={handleDelete}
+            onDelete={handleDelete}
           />
         </section>
 
