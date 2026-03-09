@@ -27,13 +27,13 @@ export default function ClientDashboard({
   initialFilterOptions,
 }: ClientDashboardProps) {
   const { toast } = useToast();
-  
+
   // Initialize state with server-fetched data
   const [products, setProducts] = useState<IProduct[]>(initialProducts);
   const [total, setTotal] = useState(initialTotal);
   const [totalPages, setTotalPages] = useState(initialTotalPages);
   const [filterOptions, setFilterOptions] = useState<FilterOptions>(initialFilterOptions || EMPTY_FILTERS);
-  
+
   // Track if this is the initial mount to prevent redundant fetching
   const isInitialMount = useRef(true);
 
@@ -144,10 +144,10 @@ export default function ClientDashboard({
     setPage(1);
   }, []);
 
-  const handleDelete = useCallback((id: string) => {
-    setProducts((prev) => prev.filter((p) => p._id !== id));
-    setTotal((prev) => prev - 1);
-  }, []);
+  // const handleDelete = useCallback((id: string) => {
+  //   setProducts((prev) => prev.filter((p) => p._id !== id));
+  //   setTotal((prev) => prev - 1);
+  // }, []);
 
   const handleUploadComplete = useCallback(() => {
     setPage(1);
@@ -267,18 +267,18 @@ export default function ClientDashboard({
 
             {/* Latest? Checkbox */}
             <div className="flex flex-col items-center gap-1 min-w-[44px] flex-none cursor-pointer" onClick={() => { setLatest(!latest); setPage(1); }}>
-              <div className="relative flex items-center justify-center w-[16px] h-[16px] mt-[4px]">
+              <div className="relative flex items-center justify-center w-auto mt-[4px]">
                 <input
                   type="checkbox"
-                  className="peer appearance-none w-full h-full rounded bg-gray-900 checked:bg-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all border-2 border-gray-700 shadow-inner"
+                  className="peer appearance-none w-6 h-6 rounded bg-gray-900 checked:bg-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all border-2 border-gray-700 shadow-inner"
                   checked={latest}
                   readOnly
                 />
-                <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <svg className="absolute w-5 h-5 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <span className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase mt-0.5">
+              <span className="text-[12px] font-semibold tracking-wider text-gray-500 uppercase mt-0.5">
                 Latest?
               </span>
             </div>
@@ -318,7 +318,7 @@ export default function ClientDashboard({
             sortBy={sortBy}
             sortOrder={sortOrder}
             onSort={handleSort}
-            onDelete={handleDelete}
+          // onDelete={handleDelete}
           />
         </section>
 

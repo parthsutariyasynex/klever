@@ -23,9 +23,9 @@ export async function PUT(
       { new: true, runValidators: true }
     ).lean();
 
-    // if (!product) {
-    //   return NextResponse.json({ error: "Product not found" }, { status: 404 });
-    // }
+    if (!product) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
 
     return NextResponse.json({ success: true, product });
   } catch (error: any) {
@@ -34,27 +34,27 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await connectDB();
-    const { id } = await params;
+// export async function DELETE(
+//   req: NextRequest,
+//   { params }: { params: Promise<{ id: string }> }
+// ) {
+//   try {
+//     await connectDB();
+//     const { id } = await params;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
-    }
+//     if (!mongoose.Types.ObjectId.isValid(id)) {
+//       return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
+//     }
 
-    const deleted = await Product.findByIdAndDelete(id).lean();
+//     const deleted = await Product.findByIdAndDelete(id).lean();
 
-    if (!deleted) {
-      return NextResponse.json({ error: "Product not found" }, { status: 404 });
-    }
+//     if (!deleted) {
+//       return NextResponse.json({ error: "Product not found" }, { status: 404 });
+//     }
 
-    return NextResponse.json({ success: true, message: "Product deleted" });
-  } catch (error) {
-    console.error("DELETE /api/products/[id] error:", error);
-    return NextResponse.json({ error: "Failed to delete product" }, { status: 500 });
-  }
-}
+//     return NextResponse.json({ success: true, message: "Product deleted" });
+//   } catch (error) {
+//     console.error("DELETE /api/products/[id] error:", error);
+//     return NextResponse.json({ error: "Failed to delete product" }, { status: 500 });
+//   }
+// }

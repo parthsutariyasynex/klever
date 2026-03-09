@@ -39,23 +39,23 @@ function ProductTable({ products, loading, page, sortBy, sortOrder, onSort, onDe
     const { toast } = useToast();
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("Delete this product?")) return;
-        setDeletingId(id);
-        try {
-            const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
-            if (res.ok) {
-                toast("Product deleted", "success");
-                onDelete(id);
-            } else {
-                toast("Failed to delete", "error");
-            }
-        } catch {
-            toast("Network error", "error");
-        } finally {
-            setDeletingId(null);
-        }
-    };
+    // const handleDelete = async (id: string) => {
+    //     if (!confirm("Delete this product?")) return;
+    //     setDeletingId(id);
+    //     try {
+    //         const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+    //         if (res.ok) {
+    //             toast("Product deleted", "success");
+    //             onDelete(id);
+    //         } else {
+    //             toast("Failed to delete", "error");
+    //         }
+    //     } catch {
+    //         toast("Network error", "error");
+    //     } finally {
+    //         setDeletingId(null);
+    //     }
+    // };
 
     const SortIcon = ({ field }: { field: string }) => {
         if (sortBy !== field) return <span className="ml-1 text-gray-600">↕</span>;
