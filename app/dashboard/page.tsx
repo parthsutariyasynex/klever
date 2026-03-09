@@ -64,7 +64,7 @@ export default function DashboardPage() {
       if (size) params.set("size", size);
       if (year) params.set("year", year);
       if (qty) params.set("qty", qty);
-      if (latest) params.set("latest", "true");
+      if (latest) params.set("latest", "1");
 
       const res = await fetch(`/api/products?${params}`);
       if (!res.ok) throw new Error("Failed to fetch products");

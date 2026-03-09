@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
 
     // Extract query params from request URL
     const { searchParams } = new URL(req.url);
+    // console.log(searchParams);
 
     /*
       Pagination controls
@@ -45,8 +46,18 @@ export async function GET(req: NextRequest) {
       - sortOrder: asc / desc
     */
     const rawSortBy = searchParams.get("sortBy") ?? "createdAt";
-    const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1;
+    // const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1;
+    const sortOrderParam = (searchParams.get("sortOrder") || "desc").toLowerCase();
+
+    const sortOrder = sortOrderParam === "asc" ? 1 : -1;
     const sortBy = ALLOWED_SORT.includes(rawSortBy) ? rawSortBy : "createdAt";
+    // console.log("sortOrderParam:", sortOrderParam);
+    // console.log("sortOrder:", sortOrder);
+    // console.log("URL:", req.url);
+    console.log("All params:", Object.fromEntries(searchParams.entries()));
+    // console.log("sortOrder raw:", searchParams.get("sortOrder"));
+
+
 
     /*
       Individual filter parameters
@@ -63,8 +74,6 @@ export async function GET(req: NextRequest) {
     const loadIndex = searchParams.get("load_index") ?? "";
     const sourceName = searchParams.get("source_name") ?? "";
     const qty = searchParams.get("qty") ?? "";
-    const latest = searchParams.get("latest") === "true";
-
     const priceMin = searchParams.get("price_min") ?? "";
     const priceMax = searchParams.get("price_max") ?? "";
     const costMin = searchParams.get("cost_min") ?? "";
@@ -72,6 +81,9 @@ export async function GET(req: NextRequest) {
 
     // MongoDB filter object
     const filter: any = {};
+    // console.log("filter", filter);
+    // console.log("latest", latest);
+
 
     /* -------------------------------------------------------
        SEARCH LOGIC
@@ -256,25 +268,13 @@ export async function GET(req: NextRequest) {
 
     /* -------------------------------------------------------
        LATEST PRODUCTS
-       Returns products added on latest date
+       Filters by is_latest field in the database
     -------------------------------------------------------- */
 
+    const latest = searchParams.get("latest") === "1";
     if (latest) {
-      const mostRecent = await Product.findOne()
-        .sort({ createdAt: -1 })
-        .select("createdAt")
-        .lean();
-
-      if (mostRecent?.createdAt) {
-        const latestDate = new Date(mostRecent.createdAt);
-        latestDate.setHours(0, 0, 0, 0);
-
-        filter.createdAt = { $gte: latestDate };
-      } else {
-        filter.createdAt = { $gte: new Date(Date.now() - 86400000) };
-      }
+      filter.is_latest = 1;
     }
-
     /* -------------------------------------------------------
        PRICE RANGE FILTER
     -------------------------------------------------------- */
@@ -325,13 +325,13 @@ export async function GET(req: NextRequest) {
     */
     const [products, total, summaryAgg] = await Promise.all([
       Product.find(filter)
-        .sort({ [sortBy]: sortOrder })
+        // .sort({ [sortBy]: sortOrder })
+        .sort({ [sortBy]: sortOrder, _id: sortOrder })
         .skip(skip)
         .limit(limit)
         .lean(),
 
       Product.countDocuments(filter),
-
       /*
         Aggregation for filter dropdown data
       */
@@ -379,6 +379,8 @@ export async function GET(req: NextRequest) {
     ]);
 
     const summaryData = summaryAgg[0] || {};
+    // console.log("Products year sample:", products.slice(0, 10).map(p => p.year));
+    // console.log("Years from aggregation:", summaryAgg?.[0]?.years);
 
     /*
       Final API response

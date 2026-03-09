@@ -130,12 +130,23 @@ function ProductTable({ products, loading, page, sortBy, sortOrder, onSort, onDe
                                     </span>
                                 </td>
 
-                                <td className="px-3 py-2.5 text-gray-300 text-right align-middle text-[13px]">{p.year || "—"}</td>
+                                {/* <td className="px-3 py-2.5 text-gray-300 text-right align-middle text-[13px]">{p.year ?? "—"}</td>
 
-                                <td className="px-3 py-2.5 text-gray-400 align-middle text-[13px]">{p.country || "—"}</td>
+                                <td className="px-3 py-2.5 text-gray-400 align-middle text-[13px]">{p.country ?? "—"}</td>
 
                                 <td className="px-3 py-2.5 text-gray-300 font-mono text-right align-middle text-[13px]">
                                     {(p as any).qty ?? 0}
+                                </td> */}
+                                <td className="px-3 py-2.5 text-gray-300 text-right align-middle text-[13px]">
+                                    {p.year ?? "—"}
+                                </td>
+
+                                <td className="px-3 py-2.5 text-gray-400 align-middle text-[13px]">
+                                    {p.country ?? "—"}
+                                </td>
+
+                                <td className="px-3 py-2.5 text-gray-300 font-mono text-right align-middle text-[13px]">
+                                    {p.qty ?? 0}
                                 </td>
 
                                 <td className="px-3 py-2.5 text-emerald-400 font-mono font-medium text-right align-middle text-[13px]">{formatCurrency(p.cost)}</td>
