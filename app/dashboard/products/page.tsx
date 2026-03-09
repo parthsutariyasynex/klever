@@ -78,3 +78,14 @@ const initialProducts: Product[] = [
     </div>
   );
 } */}
+
+// /app/dashboard/products/page.tsx
+
+export default function ProductsPage() {
+  return (
+    <div>
+      <h1>Products Page</h1>
+      {/* Your list / sorting component here */}
+    </div>
+  );
+}
