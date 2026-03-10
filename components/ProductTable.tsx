@@ -65,7 +65,7 @@ function ProductTable({ products, loading, page, sortBy, sortOrder, onSort, onDe
     };
 
     return (
-        <div className="flex-1 min-h-0 min-w-0 w-full h-full bg-[#0d1323] border border-gray-800 rounded-xl overflow-hidden shadow-xl flex flex-col">
+        <div className="flex-1 min-h-0 min-w-0 w-full h-full bg-[#0d1323] border border-gray-800 rounded-xl overflow-auto shadow-xl flex flex-col">
 
             <div className="overflow-auto flex-1 h-full custom-scrollbar">
 

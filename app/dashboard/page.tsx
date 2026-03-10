@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import UploadCSV from "@/components/UploadCSV";
 import ProductTable from "@/components/ProductTable";
 import Pagination from "@/components/Pagination";
+import CompetitorProductsTable from "@/components/CompetitorProductsTable";
 import { IProduct, ProductsApiResponse, FilterOptions } from "@/types/product";
 import { useToast } from "@/components/ToastProvider";
 
@@ -43,6 +44,7 @@ export default function DashboardPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [limit, setLimit] = useState(10);
 
   // Filter options from API
   const [filterOptions, setFilterOptions] = useState<FilterOptions>(EMPTY_FILTERS);
@@ -55,7 +57,7 @@ export default function DashboardPage() {
     setError(null);
 
     try {
-      const params = new URLSearchParams({ page: String(page), limit: "200", sortBy, sortOrder });
+      const params = new URLSearchParams({ page: String(page), limit: String(limit), sortBy, sortOrder });
 
       if (search) params.set("search", search);
       if (sourceName) params.set("source_name", sourceName);
@@ -84,7 +86,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, sortBy, sortOrder, sourceName, brandCategory, brand, size, year, qty, latest]);
+  }, [page, limit, search, sortBy, sortOrder, sourceName, brandCategory, brand, size, year, qty, latest]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
@@ -153,7 +155,7 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="h-screen flex flex-col bg-[#0a0f1c] text-white overflow-hidden">
+    <div className="min-h-screen flex flex-col bg-[#0a0f1c] text-white overflow-auto">
       <div className="w-full mx-auto px-4 md:px-6 flex flex-col h-full">
         {/* Header (Fixed) */}
         <header className="flex-none flex items-center justify-between py-3 border-b border-gray-800 flex-wrap gap-4">
@@ -267,8 +269,7 @@ export default function DashboardPage() {
                   type="checkbox"
                   className="peer appearance-none w-6 h-6 rounded bg-gray-900 checked:bg-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all border-2 border-gray-700 shadow-inner"
                   checked={latest}
-                  readOnly
-                />
+                  readOnly />
 
                 <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -306,6 +307,21 @@ export default function DashboardPage() {
           </div>
         </section>
 
+        {/* Supplier Entries Dropdown */}
+        <div className="flex items-center gap-2 text-[13px] text-gray-400 mb-3">
+          <span>Show</span>
+          <select
+            value={limit}
+            onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+            className="bg-[#0d1323] border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all cursor-pointer"
+          >
+            {[10, 25, 50, 100, 200].map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+          <span>entries</span>
+        </div>
+
         {/* Product Table (Scrollable) */}
         <section className="flex-1 min-h-0 mb-4 flex flex-col relative z-0">
           <ProductTable
@@ -325,8 +341,20 @@ export default function DashboardPage() {
             page={page}
             totalPages={totalPages}
             total={total}
-            perPage={200}
+            perPage={limit}
             onPageChange={setPage}
+          />
+        </section>
+
+        {/* Competitor Products Table */}
+        <section className="flex-none pb-8">
+          <CompetitorProductsTable
+            parentSearch={search}
+            parentSourceName={sourceName}
+            parentBrandCategory={brandCategory}
+            parentBrand={brand}
+            parentSize={size}
+            parentYear={year}
           />
         </section>
       </div>

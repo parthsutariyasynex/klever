@@ -78,6 +78,43 @@ export default function UploadCSV({ onUploadComplete }: UploadCSVProps) {
         });
     };
 
+    //     return (
+    //         <div className="flex items-center gap-3">
+    //             {uploading && (
+    //                 <div className="flex items-center gap-2">
+    //                     <div className="w-4 h-4 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+    //                     <p className="text-gray-400 text-xs whitespace-nowrap">{status}</p>
+    //                 </div>
+    //             )}
+
+    //             <button
+    //                 onClick={() => !uploading && fileInputRef.current?.click()}
+    //                 className="px-4 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition flex items-center gap-2 shadow-sm font-medium"
+    //             >
+    //                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    //                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+    //                 </svg>
+    //                 Import
+    //             </button>
+
+    //             <input
+    //                 ref={fileInputRef}
+    //                 type="file"
+    //                 accept=".csv"
+    //                 className="hidden"
+    //                 onChange={(e) => {
+    //                     const file = e.target.files?.[0];
+    //                     if (file) handleFile(file);
+    //                     e.target.value = "";
+    //                 }}
+    //             />
+    //         </div>
+    //     );
+    // }
+
+
+
+
     return (
         <div className="flex items-center gap-3">
             {uploading && (
@@ -91,8 +128,19 @@ export default function UploadCSV({ onUploadComplete }: UploadCSVProps) {
                 onClick={() => !uploading && fileInputRef.current?.click()}
                 className="px-4 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition flex items-center gap-2 shadow-sm font-medium"
             >
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                <svg
+                    width="16"
+                    height="16"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+                    />
                 </svg>
                 Import
             </button>
@@ -105,7 +153,7 @@ export default function UploadCSV({ onUploadComplete }: UploadCSVProps) {
                 onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) handleFile(file);
-                    e.target.value = "";
+                    e.target.value = ""; // Reset input so same file can be re-uploaded
                 }}
             />
         </div>

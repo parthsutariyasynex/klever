@@ -53,6 +53,8 @@ export async function POST(req: NextRequest) {
         failed.push({ row: rowNum, reason: "Missing SKU" });
         continue;
       }
+      console.log("Raw: ", raw);
+
 
       const trimmedSku = raw.sku.trim();
 
