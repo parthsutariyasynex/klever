@@ -1,8 +1,7 @@
 export interface IProduct {
     _id: string;
-    source_type: "supplier" | "competitor";
+    product_source: "supplier" | "competitor";
     klever_sku: string;
-    product_source: string;
     source_name: string;
     sku: string;
     product_url: string;
@@ -36,7 +35,7 @@ export interface IProduct {
 
 export interface ICompetitorProduct {
     _id: string;
-    source_type: "competitor";
+    product_source: "competitor";
     source_name: string;
     item_code: string;
     category: string;

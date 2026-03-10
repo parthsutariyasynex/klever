@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
 
         // Build filter — only competitor products
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const filter: Record<string, any> = { source_type: "competitor" };
+        const filter: Record<string, any> = { product_source: "competitor" };
 
         if (search) {
             const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

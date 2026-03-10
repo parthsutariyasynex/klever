@@ -121,7 +121,7 @@ function safeString(value: unknown): string | null {
 function transformRow(rawRow: CSVRow): Partial<ProductType> & { item_code: string } {
     const row = normalizeRow(rawRow);
     return {
-        source_type: "competitor",
+        product_source: "competitor",
         source_name: safeString(row.source) ?? "",
         item_code: safeString(row.item_code) ?? "",
         category: safeString(row.category) ?? "",
@@ -196,7 +196,7 @@ export async function POST(req: NextRequest) {
 
                 operations.push({
                     updateOne: {
-                        filter: { item_code: data.item_code, source_type: "competitor" },
+                        filter: { item_code: data.item_code, product_source: "competitor" },
                         update: { $set: data },
                         upsert: true,
                     },

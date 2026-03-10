@@ -1,10 +1,9 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IProductDoc extends Document {
-  source_type: "supplier" | "competitor";
+  product_source: "supplier" | "competitor";
   supplierId: mongoose.Types.ObjectId;
   klever_sku: string;
-  product_source: string;
   source_name: string;
   sku: string;
   product_url: string;
@@ -39,10 +38,9 @@ export interface IProductDoc extends Document {
 
 const ProductSchema = new Schema<IProductDoc>(
   {
-    source_type: { type: String, enum: ["supplier", "competitor"], default: "supplier", index: true },
+    product_source: { type: String, enum: ["supplier", "competitor"], default: "supplier", index: true },
     supplierId: { type: Schema.Types.ObjectId, ref: "Supplier", required: false, index: true },
     klever_sku: { type: String, default: "" },
-    product_source: { type: String, default: "" },
     source_name: { type: String, default: "" },
     sku: { type: String, default: "" },
     product_url: { type: String, default: "" },
@@ -82,7 +80,7 @@ ProductSchema.index({ year: 1 });
 ProductSchema.index({ source_name: 1 });
 ProductSchema.index({ createdAt: -1 });
 ProductSchema.index({ item_code: 1 });
-ProductSchema.index({ source_type: 1, brand: 1 });
-ProductSchema.index({ source_type: 1, createdAt: -1 });
+ProductSchema.index({ product_source: 1, brand: 1 });
+ProductSchema.index({ product_source: 1, createdAt: -1 });
 
 export default mongoose.models.Product || mongoose.model<IProductDoc>("Product", ProductSchema);

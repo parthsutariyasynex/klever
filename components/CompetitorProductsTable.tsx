@@ -107,8 +107,7 @@ function CompetitorProductsTable({
                         const res = await fetch("/api/products/import", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ data: chunk, source_type: "competitor" }),
-                            // body: JSON.stringify({ data: chunk }),
+                            body: JSON.stringify({ data: chunk, product_source: "competitor" }),
 
                         });
 

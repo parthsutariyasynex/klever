@@ -33,7 +33,6 @@ function buildSharedFilter(searchParams: URLSearchParams): Record<string, any> {
 
   const search = searchParams.get("search") ?? "";
   const brand = searchParams.get("brand") ?? "";
-  const sourceName = searchParams.get("source_name") ?? "";
   const brandCategory = searchParams.get("brand_category") ?? "";
   const size = searchParams.get("size") ?? "";
   const year = searchParams.get("year") ?? "";
@@ -87,14 +86,6 @@ function buildSharedFilter(searchParams: URLSearchParams): Record<string, any> {
     const brands = brand.split(",").map((b) => b.trim()).filter(Boolean);
     filter.brand = {
       $in: brands.map((b) => new RegExp(escapeRegex(b), "i")),
-    };
-  }
-
-  /* ── Source name filter ── */
-  if (sourceName) {
-    filter.source_name = {
-      $regex: escapeRegex(sourceName),
-      $options: "i",
     };
   }
 
@@ -163,7 +154,7 @@ function buildSharedFilter(searchParams: URLSearchParams): Record<string, any> {
 
 /* ─────────────────────────────────────────────────────────────
    Auto-migration: runs ONCE on first request.
-   Sets source_type = "supplier" on all old documents that
+   Sets product_source = "supplier" on all old documents that
    don't have it. After first run, migrated = true and it
    never runs again for the lifetime of this server process.
 ───────────────────────────────────────────────────────────── */
@@ -171,28 +162,26 @@ let migrated = false;
 
 async function autoMigrate() {
   if (migrated) return;
+  migrated = true; // skip on future requests regardless of outcome
 
-  const count = await Product.countDocuments({ source_type: { $exists: false } });
+  try {
+    const count = await Product.countDocuments({ product_source: { $exists: false } });
 
-  if (count > 0) {
-    console.log(`[auto-migrate] Found ${count} docs without source_type. Setting to "supplier"...`);
-    const result = await Product.updateMany(
-      { source_type: { $exists: false } },
-      { $set: { source_type: "supplier" } }
-    );
-    console.log(`[auto-migrate] Done! Updated ${result.modifiedCount} documents.`);
-  } else {
-    console.log("[auto-migrate] All documents already have source_type. Skipping.");
+    if (count > 0) {
+      console.log(`[auto-migrate] Found ${count} docs without product_source. Skipping — over quota or too many docs. Using fallback filter.`);
+    } else {
+      console.log("[auto-migrate] All documents already have product_source.");
+    }
+  } catch (err) {
+    console.warn("[auto-migrate] Error:", err);
   }
-
-  migrated = true;
 }
 
 /* ─────────────────────────────────────────────────────────────
    GET /api/products
 
    Returns BOTH supplier and competitor products from the
-   single `products` collection, split by `source_type`.
+   single `products` collection, split by `product_source`.
 ───────────────────────────────────────────────────────────── */
 export async function GET(req: NextRequest) {
   try {
@@ -232,16 +221,11 @@ export async function GET(req: NextRequest) {
     /* ── Build shared filter ── */
     const sharedFilter = buildSharedFilter(searchParams);
 
-    /* ── Supplier filter ──
-       Uses exact match { source_type: "supplier" } so MongoDB can
-       use the compound index { source_type: 1, createdAt: -1 } for sorting.
-
-       IMPORTANT: Run /api/migrate ONCE to set source_type on old documents.
-    */
+    /* ── Supplier filter ── */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supplierFilter: Record<string, any> = {
       ...sharedFilter,
-      source_type: "supplier",
+      product_source: { $ne: "competitor" },
     };
     // Preserve $and from shared filter
     if (sharedFilter.$and) {
@@ -249,6 +233,14 @@ export async function GET(req: NextRequest) {
     }
 
     // Supplier-only filters
+    const sourceName = searchParams.get("source_name") ?? "";
+    if (sourceName) {
+      supplierFilter.source_name = {
+        $regex: escapeRegex(sourceName),
+        $options: "i",
+      };
+    }
+
     const qty = searchParams.get("qty") ?? "";
     if (qty) {
       const parsedQty = Number(qty);
@@ -281,7 +273,7 @@ export async function GET(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const competitorFilter: Record<string, any> = {
       ...sharedFilter,
-      source_type: "competitor",
+      product_source: "competitor",
     };
     // Deep-clone $and so supplier and competitor don't share array reference
     if (sharedFilter.$and) {
@@ -293,14 +285,14 @@ export async function GET(req: NextRequest) {
     const competitorSkip = (competitorPage - 1) * competitorLimit;
 
     /* ── DEBUG LOGS ── */
-    console.log("\n=== GET /api/products DEBUG ===");
-    console.log("Query params:", Object.fromEntries(searchParams.entries()));
-    console.log("Supplier filter:", JSON.stringify(supplierFilter, null, 2));
-    console.log("Competitor filter:", JSON.stringify(competitorFilter, null, 2));
-    console.log("Supplier: page=%d, limit=%d, skip=%d, sort=%s %d",
-      supplierPage, supplierLimit, supplierSkip, supplierSortField, supplierSortOrder);
-    console.log("Competitor: page=%d, limit=%d, skip=%d, sort=%s %d",
-      competitorPage, competitorLimit, competitorSkip, competitorSortField, competitorSortOrder);
+    // console.log("\n=== GET /api/products DEBUG ===");
+    // console.log("Query params:", Object.fromEntries(searchParams.entries()));
+    // console.log("Supplier filter:", JSON.stringify(supplierFilter, null, 2));
+    // // console.log("Competitor filter:", JSON.stringify(competitorFilter, null, 2));
+    // console.log("Supplier: page=%d, limit=%d, skip=%d, sort=%s %d",
+    //   supplierPage, supplierLimit, supplierSkip, supplierSortField, supplierSortOrder);
+    // console.log("Competitor: page=%d, limit=%d, skip=%d, sort=%s %d",
+    //   competitorPage, competitorLimit, competitorSkip, competitorSortField, competitorSortOrder);
 
     /* ── Run all queries in parallel ──
        Using distinct() instead of aggregation to avoid
@@ -423,9 +415,9 @@ export async function POST(req: NextRequest) {
       data.plain_size = Number(data.size.replace(/\D/g, ""));
     }
 
-    // Default source_type to "supplier"
-    if (!data.source_type) {
-      data.source_type = "supplier";
+    // Default product_source to "supplier"
+    if (!data.product_source) {
+      data.product_source = "supplier";
     }
 
     const newProduct = await Product.create(data);

@@ -28,7 +28,7 @@ function safeString(value: unknown): string | undefined {
 /* ── Competitor header aliases (same as /api/competitor-products/import) ── */
 const COMPETITOR_ALIASES: Record<string, string> = {
   source: "source_name", source_name: "source_name", sourcename: "source_name",
-  product_source: "source_name", supplier: "source_name",
+  supplier: "source_name",
   item_code: "item_code", itemcode: "item_code", "item code": "item_code",
   code: "item_code",
   category: "category", brand_category: "category", brandcategory: "category",
@@ -65,14 +65,17 @@ function normalizeCompetitorRow(row: CSVRow): CSVRow {
 const SUPPLIER_ONLY_HEADERS = ["sku", "klever_sku", "fitting_price", "tyre_marking", "product_image_url", "load_index"];
 const COMPETITOR_ONLY_HEADERS = ["item_code", "itemcode", "item code", "code", "tyre_pattern", "tyrepattern", "pattern"];
 
-function detectSourceType(headers: string[]): "supplier" | "competitor" {
+function detectSourceType(headers: string[]): "supplier" | "competitor" | "mixed" {
   const lower = headers.map(h => h.trim().toLowerCase().replace(/\s+/g, "_"));
 
   const supplierScore = lower.filter(h => SUPPLIER_ONLY_HEADERS.includes(h)).length;
   const competitorScore = lower.filter(h => COMPETITOR_ONLY_HEADERS.includes(h)).length;
+  const hasProductSourceCol = lower.includes("product_source");
 
-  console.log(`[auto-detect] supplier headers found: ${supplierScore}, competitor headers found: ${competitorScore}`);
+  console.log(`[auto-detect] supplier headers found: ${supplierScore}, competitor headers found: ${competitorScore}, has product_source column: ${hasProductSourceCol}`);
 
+  // If CSV has a product_source column, treat as mixed (per-row detection)
+  if (hasProductSourceCol) return "mixed";
   // If has sku AND no item_code → supplier
   // If has item_code OR tyre_pattern (without sku) → competitor
   if (competitorScore > supplierScore) return "competitor";
@@ -81,9 +84,8 @@ function detectSourceType(headers: string[]): "supplier" | "competitor" {
 
 function transformSupplierRow(row: CSVRow): Partial<ProductType> {
   return {
-    source_type: "supplier",
+    product_source: "supplier",
     klever_sku: safeString(row.klever_sku),
-    product_source: safeString(row.product_source),
     source_name: safeString(row.source_name),
     sku: safeString(row.sku) ?? "",
     product_url: safeString(row.product_url),
@@ -122,7 +124,7 @@ function transformSupplierRow(row: CSVRow): Partial<ProductType> {
 function transformCompetitorRow(rawRow: CSVRow): Partial<ProductType> {
   const row = normalizeCompetitorRow(rawRow);
   return {
-    source_type: "competitor",
+    product_source: "competitor",
     source_name: safeString(row.source_name) ?? "",
     item_code: safeString(row.item_code) ?? "",
     category: safeString(row.category) ?? "",
@@ -177,10 +179,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── Auto-detect source_type from CSV headers ──
+    // ── Auto-detect product_source from CSV headers ──
     const csvHeaders = Object.keys(rows[0]);
-    // Allow override via request body (e.g., { data: [...], source_type: "competitor" })
-    const forceType = body?.source_type as string | undefined;
+    // Allow override via request body (e.g., { data: [...], product_source: "competitor" })
+    const forceType = body?.product_source as string | undefined;
     const detectedType = forceType === "competitor" || forceType === "supplier"
       ? forceType
       : detectSourceType(csvHeaders);
@@ -196,6 +198,8 @@ export async function POST(req: NextRequest) {
     let inserted = 0;
     let updated = 0;
     let failed = 0;
+    let supplierCount = 0;
+    let competitorCount = 0;
     const errors: string[] = [];
 
     const batchSize = 100;
@@ -207,54 +211,29 @@ export async function POST(req: NextRequest) {
       for (let j = 0; j < batch.length; j++) {
         const row = batch[j];
 
-        // 1) Read source_type directly from the CSV row if it exists
-        let rowSourceType = detectedType;
-        if (row.source_type && typeof row.source_type === "string") {
-          const parsedType = row.source_type.trim().toLowerCase();
-          if (parsedType === "competitor" || parsedType === "supplier") {
-            rowSourceType = parsedType;
-          }
+        // 1) Determine product_source for this row
+        let rowSourceType: "supplier" | "competitor" = "supplier";
+
+        // Check per-row product_source column first
+        const rowType = row.product_source && typeof row.product_source === "string"
+          ? row.product_source.trim().toLowerCase()
+          : "";
+        if (rowType === "competitor" || rowType === "supplier") {
+          rowSourceType = rowType;
+        } else if (detectedType === "mixed") {
+          // Fallback: detect per-row based on fields
+          rowSourceType = (row.item_code || row.itemcode) && !row.sku ? "competitor" : "supplier";
+        } else {
+          rowSourceType = detectedType === "competitor" ? "competitor" : "supplier";
         }
 
-        // if (rowSourceType === "competitor") {
-        //   const data = transformCompetitorRow(row);
-        //   const uniqueKey = data.item_code || safeString(row.sku) || safeString(row.item_code);
-        //   if (!uniqueKey) {
-        //     failed++;
-        //     errors.push(`Row ${i + j + 1}: Missing 'item_code'`);
-        //     continue;
-        //   }
-        //   operations.push({
-        //     updateOne: {
-        //       filter: { item_code: uniqueKey, source_type: "competitor" },
-        //       update: { $set: data },
-        //       upsert: true,
-        //     },
-        //   });
-        // } else {
-        //   const data = transformSupplierRow(row);
-        //   if (!data.sku) {
-        //     failed++;
-        //     errors.push(`Row ${i + j + 1}: Missing required field 'sku'`);
-        //     continue;
-        //   }
-        //   operations.push({
-        //     updateOne: {
-        //       filter: { sku: data.sku, source_type: "supplier" },
-        //       update: { $set: data },
-        //       upsert: true,
-        //     },
-        //   });
-        // }
 
 
 
 
-
-
-
-        // transform once
+        // transform based on detected type
         if (rowSourceType === "competitor") {
+          competitorCount++;
           const data = transformCompetitorRow(row);
 
           const uniqueKey =
@@ -270,13 +249,14 @@ export async function POST(req: NextRequest) {
 
           operations.push({
             updateOne: {
-              filter: { item_code: uniqueKey, source_type: "competitor" },
+              filter: { item_code: uniqueKey, product_source: "competitor" },
               update: { $set: data },
               upsert: true,
             },
           });
 
         } else {
+          supplierCount++;
           const data = transformSupplierRow(row);
 
           if (!data.sku) {
@@ -287,7 +267,7 @@ export async function POST(req: NextRequest) {
 
           operations.push({
             updateOne: {
-              filter: { sku: data.sku, source_type: "supplier" },
+              filter: { sku: data.sku, product_source: "supplier" },
               update: { $set: data },
               upsert: true,
             },
@@ -305,9 +285,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Import complete (${detectedType}): ${inserted} inserted, ${updated} updated, ${failed} failed`,
+      message: `Import complete (${detectedType}): ${inserted} inserted, ${updated} updated, ${failed} failed | supplier: ${supplierCount}, competitor: ${competitorCount}`,
       detectedType,
-      details: { inserted, updated, failed, total: rows.length },
+      details: { inserted, updated, failed, total: rows.length, supplierCount, competitorCount },
       errors: errors.length > 0 ? errors.slice(0, 10) : undefined,
     });
   } catch (error) {
