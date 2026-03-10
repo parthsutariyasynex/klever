@@ -5,7 +5,7 @@ import UploadCSV from "@/components/UploadCSV";
 import ProductTable from "@/components/ProductTable";
 import Pagination from "@/components/Pagination";
 import CompetitorProductsTable from "@/components/CompetitorProductsTable";
-import { IProduct, ProductsApiResponse, FilterOptions } from "@/types/product";
+import { IProduct, ICompetitorProduct, ImportApiResponse, FilterOptions } from "@/types/product";
 import { useToast } from "@/components/ToastProvider";
 
 const EMPTY_FILTERS: FilterOptions = {
@@ -17,6 +17,13 @@ const EMPTY_FILTERS: FilterOptions = {
 export default function DashboardPage() {
   const { toast } = useToast();
   const [products, setProducts] = useState<IProduct[]>([]);
+  const [competitorProducts, setCompetitorProducts] = useState<ICompetitorProduct[]>([]);
+  const [competitorTotal, setCompetitorTotal] = useState(0);
+  const [competitorPage, setCompetitorPage] = useState(1);
+  const [competitorTotalPages, setCompetitorTotalPages] = useState(1);
+  const [competitorLimit, setCompetitorLimit] = useState(10);
+  const [competitorSortBy, setCompetitorSortBy] = useState("createdAt");
+  const [competitorSortOrder, setCompetitorSortOrder] = useState<"asc" | "desc">("desc");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,8 +64,20 @@ export default function DashboardPage() {
     setError(null);
 
     try {
-      const params = new URLSearchParams({ page: String(page), limit: String(limit), sortBy, sortOrder });
+      const params = new URLSearchParams({
+        // Supplier pagination & sorting
+        supplier_page: String(page),
+        supplier_limit: String(limit),
+        sortBy,
+        sortOrder,
+        // Competitor pagination & sorting
+        competitor_page: String(competitorPage),
+        competitor_limit: String(competitorLimit),
+        competitor_sortBy: competitorSortBy,
+        competitor_sortOrder: competitorSortOrder,
+      });
 
+      // Shared filters (applied to both tables)
       if (search) params.set("search", search);
       if (sourceName) params.set("source_name", sourceName);
       if (brandCategory) params.set("brand_category", brandCategory);
@@ -71,22 +90,25 @@ export default function DashboardPage() {
       const res = await fetch(`/api/products?${params}`);
       if (!res.ok) throw new Error("Failed to fetch products");
 
-      const data: ProductsApiResponse = await res.json();
+      const data: ImportApiResponse = await res.json();
 
-      // console.log("API DATA:", data);
-      // console.log("PRODUCTS:", data.products);
+      // Supplier data
+      setProducts(data.supplierProducts);
+      setTotalPages(data.supplierTotalPages);
+      setTotal(data.supplierTotal);
 
+      // Competitor data
+      setCompetitorProducts(data.competitorProducts as ICompetitorProduct[]);
+      setCompetitorTotal(data.competitorTotal);
+      setCompetitorTotalPages(data.competitorTotalPages);
 
-      setProducts(data.products);
-      setTotalPages(data.totalPages);
-      setTotal(data.total);
       setFilterOptions(data.filterOptions);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search, sortBy, sortOrder, sourceName, brandCategory, brand, size, year, qty, latest]);
+  }, [page, limit, search, sortBy, sortOrder, sourceName, brandCategory, brand, size, year, qty, latest, competitorPage, competitorLimit, competitorSortBy, competitorSortOrder]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
@@ -349,12 +371,26 @@ export default function DashboardPage() {
         {/* Competitor Products Table */}
         <section className="flex-none pb-8">
           <CompetitorProductsTable
-            parentSearch={search}
-            parentSourceName={sourceName}
-            parentBrandCategory={brandCategory}
-            parentBrand={brand}
-            parentSize={size}
-            parentYear={year}
+            products={competitorProducts}
+            total={competitorTotal}
+            page={competitorPage}
+            totalPages={competitorTotalPages}
+            limit={competitorLimit}
+            sortBy={competitorSortBy}
+            sortOrder={competitorSortOrder}
+            loading={loading}
+            onPageChange={setCompetitorPage}
+            onLimitChange={(l) => { setCompetitorLimit(l); setCompetitorPage(1); }}
+            onSortChange={(field) => {
+              if (competitorSortBy === field) {
+                setCompetitorSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+              } else {
+                setCompetitorSortBy(field);
+                setCompetitorSortOrder("asc");
+              }
+              setCompetitorPage(1);
+            }}
+            onImportComplete={() => { setCompetitorPage(1); fetchProducts(); }}
           />
         </section>
       </div>

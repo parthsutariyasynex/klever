@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
-import CompetitorProduct from "@/models/CompetitorProduct";
+import Product from "@/models/Product";
 import type { AnyBulkWriteOperation, InferSchemaType } from "mongoose";
 
-type CompetitorProductType = InferSchemaType<typeof CompetitorProduct.schema>;
+type ProductType = InferSchemaType<typeof Product.schema>;
 
 interface CSVRow {
     [key: string]: unknown;
@@ -12,11 +12,11 @@ interface CSVRow {
 /* ──────────────────────────────────────────────
    Column alias map
    Maps all known CSV header variations to our
-   competitor_products field names.
+   field names in the unified products collection.
    Keys are lowercase, spaces → underscores.
    ────────────────────────────────────────────── */
 const HEADER_ALIASES: Record<string, string> = {
-    // source
+    // source (maps to source field on competitor products)
     source: "source",
     source_name: "source",
     sourcename: "source",
@@ -106,10 +106,10 @@ function parseNumber(value: unknown): number | null {
     return isNaN(num) ? null : num;
 }
 
-function parseBoolean(value: unknown): boolean {
-    if (value === null || value === undefined) return false;
+function parseRunflat(value: unknown): string {
+    if (value === null || value === undefined) return "No";
     const str = String(value).trim().toLowerCase();
-    return ["true", "yes", "1"].includes(str);
+    return ["true", "yes", "1"].includes(str) ? "Yes" : "No";
 }
 
 function safeString(value: unknown): string | null {
@@ -118,23 +118,24 @@ function safeString(value: unknown): string | null {
     return str === "" ? null : str;
 }
 
-function transformRow(rawRow: CSVRow): Partial<CompetitorProductType> & { item_code: string } {
+function transformRow(rawRow: CSVRow): Partial<ProductType> & { item_code: string } {
     const row = normalizeRow(rawRow);
     return {
-        source: safeString(row.source) ?? null,
+        source_type: "competitor",
+        source_name: safeString(row.source) ?? "",
         item_code: safeString(row.item_code) ?? "",
-        category: safeString(row.category) ?? null,
-        brand: safeString(row.brand) ?? null,
-        tyre_pattern: safeString(row.tyre_pattern) ?? null,
-        size: safeString(row.size) ?? null,
-        runflat: parseBoolean(row.runflat),
-        year: parseNumber(row.year) ?? null,
-        country: safeString(row.country) ?? null,
-        price: parseNumber(row.price) ?? null,
-        set_price: parseNumber(row.set_price) ?? null,
-        date: safeString(row.date) ?? null,
-        url: safeString(row.url) ?? null,
-    } as Partial<CompetitorProductType> & { item_code: string };
+        category: safeString(row.category) ?? "",
+        brand: safeString(row.brand) ?? "",
+        tyre_pattern: safeString(row.tyre_pattern) ?? "",
+        size: safeString(row.size) ?? "",
+        runflat: parseRunflat(row.runflat),
+        year: parseNumber(row.year) ?? 0,
+        country: safeString(row.country) ?? "",
+        price: parseNumber(row.price) ?? 0,
+        set_price: parseNumber(row.set_price) ?? 0,
+        date: safeString(row.date) ?? "",
+        url: safeString(row.url) ?? "",
+    } as Partial<ProductType> & { item_code: string };
 }
 
 export async function POST(req: NextRequest) {
@@ -181,7 +182,7 @@ export async function POST(req: NextRequest) {
 
         for (let i = 0; i < rows.length; i += batchSize) {
             const batch = rows.slice(i, i + batchSize);
-            const operations: AnyBulkWriteOperation<CompetitorProductType>[] = [];
+            const operations: AnyBulkWriteOperation<ProductType>[] = [];
 
             for (let j = 0; j < batch.length; j++) {
                 const row = batch[j];
@@ -195,7 +196,7 @@ export async function POST(req: NextRequest) {
 
                 operations.push({
                     updateOne: {
-                        filter: { item_code: data.item_code },
+                        filter: { item_code: data.item_code, source_type: "competitor" },
                         update: { $set: data },
                         upsert: true,
                     },
@@ -203,7 +204,7 @@ export async function POST(req: NextRequest) {
             }
 
             if (operations.length > 0) {
-                const result = await CompetitorProduct.bulkWrite(operations, { ordered: false });
+                const result = await Product.bulkWrite(operations, { ordered: false });
                 inserted += result.upsertedCount || 0;
                 updated += result.modifiedCount || 0;
             }

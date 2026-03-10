@@ -19,52 +19,135 @@ function parseNumber(value: unknown): number | undefined {
   return isNaN(num) ? undefined : num;
 }
 
-function parseBoolean(value: unknown): boolean | undefined {
-  if (value === null || value === undefined) return undefined;
-  const str = String(value).trim().toLowerCase();
-  if (str === "") return undefined;
-  if (["true", "yes", "1"].includes(str)) return true;
-  if (["false", "no", "0"].includes(str)) return false;
-  return undefined;
-}
-
-function parseDate(value: unknown): Date | undefined {
+function safeString(value: unknown): string | undefined {
   if (value === null || value === undefined) return undefined;
   const str = String(value).trim();
-  if (str === "") return undefined;
-  const date = new Date(str);
-  return isNaN(date.getTime()) ? undefined : date;
+  return str === "" ? undefined : str;
 }
 
-function transformRow(row: CSVRow): Partial<ProductType> {
+/* ── Competitor header aliases (same as /api/competitor-products/import) ── */
+const COMPETITOR_ALIASES: Record<string, string> = {
+  source: "source_name", source_name: "source_name", sourcename: "source_name",
+  product_source: "source_name", supplier: "source_name",
+  item_code: "item_code", itemcode: "item_code", "item code": "item_code",
+  code: "item_code",
+  category: "category", brand_category: "category", brandcategory: "category",
+  brand: "brand",
+  tyre_pattern: "tyre_pattern", tyrepattern: "tyre_pattern", pattern: "tyre_pattern",
+  product_name: "tyre_pattern", productname: "tyre_pattern", name: "tyre_pattern",
+  tyre_name: "tyre_pattern",
+  size: "size",
+  runflat: "runflat", run_flat: "runflat", is_runflat: "runflat",
+  year: "year", country: "country",
+  price: "price", cost: "price",
+  set_price: "set_price", setprice: "set_price",
+  date: "date", source_date: "date", sourcedate: "date",
+  created_at: "date", import_date: "date",
+  url: "url", link: "url", product_url: "url", producturl: "url",
+};
+
+function normalizeCompetitorRow(row: CSVRow): CSVRow {
+  const normalized: CSVRow = {};
+  for (const [key, value] of Object.entries(row)) {
+    const lowerKey = key.trim().toLowerCase().replace(/\s+/g, "_");
+    const mappedKey = COMPETITOR_ALIASES[lowerKey] || COMPETITOR_ALIASES[key.trim().toLowerCase()] || lowerKey;
+    if (!(mappedKey in normalized)) {
+      normalized[mappedKey] = value;
+    }
+  }
+  return normalized;
+}
+
+/* ── Auto-detect: is this CSV supplier or competitor data? ──
+   Supplier CSVs have columns like: sku, product_name, cost, klever_sku, fitting_price
+   Competitor CSVs have columns like: item_code, tyre_pattern, category (without sku)
+*/
+const SUPPLIER_ONLY_HEADERS = ["sku", "klever_sku", "fitting_price", "tyre_marking", "product_image_url", "load_index"];
+const COMPETITOR_ONLY_HEADERS = ["item_code", "itemcode", "item code", "code", "tyre_pattern", "tyrepattern", "pattern"];
+
+function detectSourceType(headers: string[]): "supplier" | "competitor" {
+  const lower = headers.map(h => h.trim().toLowerCase().replace(/\s+/g, "_"));
+
+  const supplierScore = lower.filter(h => SUPPLIER_ONLY_HEADERS.includes(h)).length;
+  const competitorScore = lower.filter(h => COMPETITOR_ONLY_HEADERS.includes(h)).length;
+
+  console.log(`[auto-detect] supplier headers found: ${supplierScore}, competitor headers found: ${competitorScore}`);
+
+  // If has sku AND no item_code → supplier
+  // If has item_code OR tyre_pattern (without sku) → competitor
+  if (competitorScore > supplierScore) return "competitor";
+  return "supplier";
+}
+
+function transformSupplierRow(row: CSVRow): Partial<ProductType> {
   return {
-    klever_sku: row.klever_sku ? String(row.klever_sku).trim() : undefined,
-    product_source: row.product_source ? String(row.product_source).trim() : undefined,
-    source_name: row.source_name ? String(row.source_name).trim() : undefined,
-    sku: row.sku ? String(row.sku).trim() : "",
-    product_url: row.product_url ? String(row.product_url).trim() : undefined,
-    product_name: row.product_name ? String(row.product_name).trim() : undefined,
-    tyre_marking: row.tyre_marking ? String(row.tyre_marking).trim() : undefined,
+    source_type: "supplier",
+    klever_sku: safeString(row.klever_sku),
+    product_source: safeString(row.product_source),
+    source_name: safeString(row.source_name),
+    sku: safeString(row.sku) ?? "",
+    product_url: safeString(row.product_url),
+    product_name: safeString(row.product_name),
+    tyre_marking: safeString(row.tyre_marking),
+    tyre_pattern: safeString(row.tyre_pattern),
+    category: safeString(row.category),
+    item_code: safeString(row.item_code),
     cost: parseNumber(row.cost),
     price: parseNumber(row.price),
     set_price: parseNumber(row.set_price),
     fitting_price: parseNumber(row.fitting_price),
-    offers: row.offers ? String(row.offers).trim() : undefined,
-    brand: row.brand ? String(row.brand).trim() : undefined,
-    brand_category: row.brand_category ? String(row.brand_category).trim() : undefined,
-    plain_size: row.plain_size ? String(row.plain_size).trim() : (row.size ? String(row.size).replace(/[^0-9]/g, "") : undefined),
-    size: row.size ? String(row.size).trim() : undefined,
-    load_index: parseNumber(row.load_index),
-    runflat: parseBoolean(row.runflat),
-    vehicle_type: row.vehicle_type ? String(row.vehicle_type).trim() : undefined,
-    country: row.country ? String(row.country).trim() : undefined,
-    year: parseNumber(row.year),
-    product_image_url: row.product_image_url
-      ? String(row.product_image_url).trim()
+    offers: safeString(row.offers),
+    brand: safeString(row.brand),
+    brand_category: safeString(row.brand_category),
+    plain_size: row.plain_size
+      ? parseNumber(row.plain_size)
+      : row.size
+        ? parseNumber(String(row.size).replace(/[^0-9]/g, ""))
+        : undefined,
+    size: safeString(row.size),
+    load_index: safeString(row.load_index),
+    runflat: row.runflat != null && String(row.runflat).trim() !== ""
+      ? (["true", "yes", "1"].includes(String(row.runflat).trim().toLowerCase()) ? "Yes" : "No")
       : undefined,
-    source_date: parseDate(row.source_date),
+    vehicle_type: safeString(row.vehicle_type),
+    country: safeString(row.country),
+    year: parseNumber(row.year),
+    product_image_url: safeString(row.product_image_url),
+    source_date: safeString(row.source_date),
+    date: safeString(row.date),
+    url: safeString(row.url),
   };
 }
+
+function transformCompetitorRow(rawRow: CSVRow): Partial<ProductType> {
+  const row = normalizeCompetitorRow(rawRow);
+  return {
+    source_type: "competitor",
+    source_name: safeString(row.source_name) ?? "",
+    item_code: safeString(row.item_code) ?? "",
+    category: safeString(row.category) ?? "",
+    brand: safeString(row.brand) ?? "",
+    tyre_pattern: safeString(row.tyre_pattern) ?? "",
+    size: safeString(row.size) ?? "",
+    plain_size: row.size
+      ? parseNumber(String(row.size).replace(/[^0-9]/g, ""))
+      : undefined,
+    runflat: row.runflat != null && String(row.runflat).trim() !== ""
+      ? (["true", "yes", "1"].includes(String(row.runflat).trim().toLowerCase()) ? "Yes" : "No")
+      : "No",
+    year: parseNumber(row.year) ?? 0,
+    country: safeString(row.country) ?? "",
+    price: parseNumber(row.price) ?? 0,
+    set_price: parseNumber(row.set_price) ?? 0,
+    date: safeString(row.date) ?? "",
+    url: safeString(row.url) ?? "",
+  };
+}
+
+// Increase body size limit for large CSV files (default is ~1MB)
+export const config = {
+  maxDuration: 60,
+};
 
 // ---------- POST /api/products/import — CSV import ----------
 export async function POST(req: NextRequest) {
@@ -74,21 +157,41 @@ export async function POST(req: NextRequest) {
     let body;
     try {
       body = await req.json();
-    } catch {
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError);
       return NextResponse.json(
-        { error: "Invalid JSON format. Make sure you are sending proper JSON." },
+        { error: "Invalid JSON format. The file may be too large. Try a smaller CSV." },
         { status: 400 }
       );
     }
 
     const rows: CSVRow[] = body?.data;
 
+    console.log("[import] body keys:", Object.keys(body || {}));
+    console.log("[import] rows is array:", Array.isArray(rows), "length:", rows?.length ?? 0);
+
     if (!Array.isArray(rows) || rows.length === 0) {
       return NextResponse.json(
-        { error: "No data provided. Please upload a valid CSV file." },
+        { error: `No data provided. Got body keys: ${Object.keys(body || {}).join(", ")}` },
         { status: 400 }
       );
     }
+
+    // ── Auto-detect source_type from CSV headers ──
+    const csvHeaders = Object.keys(rows[0]);
+    // Allow override via request body (e.g., { data: [...], source_type: "competitor" })
+    const forceType = body?.source_type as string | undefined;
+    const detectedType = forceType === "competitor" || forceType === "supplier"
+      ? forceType
+      : detectSourceType(csvHeaders);
+
+    console.log("\n=== CSV IMPORT DEBUG ===");
+    console.log("CSV headers:", csvHeaders);
+    console.log("Forced type:", forceType || "none");
+    console.log("Detected type:", detectedType);
+    console.log("Total rows:", rows.length);
+    console.log("First row:", rows[0]);
+    console.log("========================\n");
 
     let inserted = 0;
     let updated = 0;
@@ -103,23 +206,96 @@ export async function POST(req: NextRequest) {
 
       for (let j = 0; j < batch.length; j++) {
         const row = batch[j];
-        const data = transformRow(row);
 
-        if (!data.sku) {
-          failed++;
-          errors.push(`Row ${i + j + 1}: Missing required field 'sku'`);
-          continue;
+        // 1) Read source_type directly from the CSV row if it exists
+        let rowSourceType = detectedType;
+        if (row.source_type && typeof row.source_type === "string") {
+          const parsedType = row.source_type.trim().toLowerCase();
+          if (parsedType === "competitor" || parsedType === "supplier") {
+            rowSourceType = parsedType;
+          }
         }
 
-        operations.push({
-          updateOne: {
-            filter: { sku: data.sku },
-            update: { $set: data },
-            upsert: true,
-          },
-        });
+        // if (rowSourceType === "competitor") {
+        //   const data = transformCompetitorRow(row);
+        //   const uniqueKey = data.item_code || safeString(row.sku) || safeString(row.item_code);
+        //   if (!uniqueKey) {
+        //     failed++;
+        //     errors.push(`Row ${i + j + 1}: Missing 'item_code'`);
+        //     continue;
+        //   }
+        //   operations.push({
+        //     updateOne: {
+        //       filter: { item_code: uniqueKey, source_type: "competitor" },
+        //       update: { $set: data },
+        //       upsert: true,
+        //     },
+        //   });
+        // } else {
+        //   const data = transformSupplierRow(row);
+        //   if (!data.sku) {
+        //     failed++;
+        //     errors.push(`Row ${i + j + 1}: Missing required field 'sku'`);
+        //     continue;
+        //   }
+        //   operations.push({
+        //     updateOne: {
+        //       filter: { sku: data.sku, source_type: "supplier" },
+        //       update: { $set: data },
+        //       upsert: true,
+        //     },
+        //   });
+        // }
+
+
+
+
+
+
+
+        // transform once
+        if (rowSourceType === "competitor") {
+          const data = transformCompetitorRow(row);
+
+          const uniqueKey =
+            data.item_code ||
+            safeString(row.sku) ||
+            safeString(row.item_code);
+
+          if (!uniqueKey) {
+            failed++;
+            errors.push(`Row ${i + j + 1}: Missing 'item_code'`);
+            continue;
+          }
+
+          operations.push({
+            updateOne: {
+              filter: { item_code: uniqueKey, source_type: "competitor" },
+              update: { $set: data },
+              upsert: true,
+            },
+          });
+
+        } else {
+          const data = transformSupplierRow(row);
+
+          if (!data.sku) {
+            failed++;
+            errors.push(`Row ${i + j + 1}: Missing required field 'sku'`);
+            continue;
+          }
+
+          operations.push({
+            updateOne: {
+              filter: { sku: data.sku, source_type: "supplier" },
+              update: { $set: data },
+              upsert: true,
+            },
+          });
+        }
       }
 
+      // Execute bulkWrite per batch, OUTSIDE the inner 'j' loop
       if (operations.length > 0) {
         const result = await Product.bulkWrite(operations, { ordered: false });
         inserted += result.upsertedCount || 0;
@@ -129,7 +305,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Import complete: ${inserted} inserted, ${updated} updated, ${failed} failed`,
+      message: `Import complete (${detectedType}): ${inserted} inserted, ${updated} updated, ${failed} failed`,
+      detectedType,
       details: { inserted, updated, failed, total: rows.length },
       errors: errors.length > 0 ? errors.slice(0, 10) : undefined,
     });

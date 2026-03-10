@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IProductDoc extends Document {
+  source_type: "supplier" | "competitor";
   supplierId: mongoose.Types.ObjectId;
   klever_sku: string;
   product_source: string;
@@ -26,17 +27,24 @@ export interface IProductDoc extends Document {
   qty: number;
   product_image_url: string;
   source_date: string;
+  // Competitor-specific fields (shared in unified collection)
+  item_code: string;
+  category: string;
+  tyre_pattern: string;
+  date: string;
+  url: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
 const ProductSchema = new Schema<IProductDoc>(
   {
+    source_type: { type: String, enum: ["supplier", "competitor"], default: "supplier", index: true },
     supplierId: { type: Schema.Types.ObjectId, ref: "Supplier", required: false, index: true },
     klever_sku: { type: String, default: "" },
     product_source: { type: String, default: "" },
     source_name: { type: String, default: "" },
-    sku: { type: String, required: true },
+    sku: { type: String, default: "" },
     product_url: { type: String, default: "" },
     product_name: { type: String, default: "" },
     tyre_marking: { type: String, default: "" },
@@ -57,6 +65,12 @@ const ProductSchema = new Schema<IProductDoc>(
     qty: { type: Number, default: 0 },
     product_image_url: { type: String, default: "" },
     source_date: { type: String, default: "" },
+    // Competitor-specific fields (shared in unified collection)
+    item_code: { type: String, default: "" },
+    category: { type: String, default: "" },
+    tyre_pattern: { type: String, default: "" },
+    date: { type: String, default: "" },
+    url: { type: String, default: "" },
   },
   { timestamps: true }
 );
@@ -67,5 +81,8 @@ ProductSchema.index({ plain_size: 1 });
 ProductSchema.index({ year: 1 });
 ProductSchema.index({ source_name: 1 });
 ProductSchema.index({ createdAt: -1 });
+ProductSchema.index({ item_code: 1 });
+ProductSchema.index({ source_type: 1, brand: 1 });
+ProductSchema.index({ source_type: 1, createdAt: -1 });
 
 export default mongoose.models.Product || mongoose.model<IProductDoc>("Product", ProductSchema);

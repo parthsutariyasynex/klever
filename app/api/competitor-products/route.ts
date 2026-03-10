@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
-import CompetitorProduct from "@/models/CompetitorProduct";
+import Product from "@/models/Product";
 
 const ALLOWED_SORT = [
     "createdAt",
-    "source",
+    "source_name",
     "item_code",
     "category",
     "brand",
@@ -44,14 +44,14 @@ export async function GET(req: NextRequest) {
         const year = searchParams.get("year") ?? "";
         const country = searchParams.get("country") ?? "";
 
-        // Build filter
+        // Build filter — only competitor products
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const filter: Record<string, any> = {};
+        const filter: Record<string, any> = { source_type: "competitor" };
 
         if (search) {
             const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
             filter.$or = [
-                { source: { $regex: escapedSearch, $options: "i" } },
+                { source_name: { $regex: escapedSearch, $options: "i" } },
                 { item_code: { $regex: escapedSearch, $options: "i" } },
                 { category: { $regex: escapedSearch, $options: "i" } },
                 { brand: { $regex: escapedSearch, $options: "i" } },
@@ -71,12 +71,10 @@ export async function GET(req: NextRequest) {
             };
         }
 
-        // source_name maps to "source" field in competitor_products
         if (sourceName) {
-            filter.source = { $regex: sourceName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
+            filter.source_name = { $regex: sourceName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
         }
 
-        // brand_category maps to "category" field in competitor_products
         if (brandCategory) {
             filter.category = { $regex: brandCategory.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
         }
@@ -100,12 +98,12 @@ export async function GET(req: NextRequest) {
         const skip = (page - 1) * limit;
 
         const [products, total] = await Promise.all([
-            CompetitorProduct.find(filter)
+            Product.find(filter)
                 .sort({ [sortField]: sortOrder, _id: sortOrder })
                 .skip(skip)
                 .limit(limit)
                 .lean(),
-            CompetitorProduct.countDocuments(filter),
+            Product.countDocuments(filter),
         ]);
 
         return NextResponse.json({

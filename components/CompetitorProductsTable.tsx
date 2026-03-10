@@ -1,37 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, memo } from "react";
+import { useState, useRef, memo } from "react";
 import Papa from "papaparse";
 import { useToast } from "./ToastProvider";
-
-/* ── Types ── */
-interface ICompetitorProduct {
-    _id: string;
-    source: string;
-    item_code: string;
-    category: string;
-    brand: string;
-    tyre_pattern: string;
-    size: string;
-    runflat: boolean;
-    year: number;
-    country: string;
-    price: number;
-    set_price: number;
-    date: string;
-    url: string;
-}
-
-interface ApiResponse {
-    products: ICompetitorProduct[];
-    total: number;
-    page: number;
-    totalPages: number;
-}
+import type { ICompetitorProduct } from "@/types/product";
 
 /* ── Column Config ── */
 const COLUMNS = [
-    { key: "source", label: "Source", sortable: true, width: "w-[7%]" },
+    { key: "source_name", label: "Source", sortable: true, width: "w-[7%]" },
     { key: "item_code", label: "Item Code", sortable: true, width: "w-[10%]" },
     { key: "category", label: "Category", sortable: true, width: "w-[7%]" },
     { key: "brand", label: "Brand", sortable: true, width: "w-[8%]" },
@@ -52,8 +28,22 @@ function formatCurrency(val: number) {
         : "—";
 }
 
-/* ── Shared filter props from parent ── */
+/* ── Props (data-driven, no self-fetching) ── */
 interface CompetitorProductsTableProps {
+    products: ICompetitorProduct[];
+    total: number;
+    page: number;
+    totalPages: number;
+    limit: number;
+    sortBy: string;
+    sortOrder: "asc" | "desc";
+    loading: boolean;
+    onPageChange: (page: number) => void;
+    onLimitChange: (limit: number) => void;
+    onSortChange: (field: string) => void;
+    onImportComplete: () => void;
+
+    // Optional parent filter states
     parentSearch?: string;
     parentSourceName?: string;
     parentBrandCategory?: string;
@@ -63,112 +53,25 @@ interface CompetitorProductsTableProps {
 }
 
 function CompetitorProductsTable({
-    parentSearch = "",
-    parentSourceName = "",
-    parentBrandCategory = "",
-    parentBrand = "",
-    parentSize = "",
-    parentYear = "",
+    products,
+    total,
+    page,
+    totalPages,
+    limit,
+    sortBy,
+    sortOrder,
+    loading,
+    onPageChange,
+    onLimitChange,
+    onSortChange,
+    onImportComplete,
 }: CompetitorProductsTableProps) {
     const { toast } = useToast();
 
-    // Data
-    const [products, setProducts] = useState<ICompetitorProduct[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    // Local search (additional refinement)
-    const [searchInput, setSearchInput] = useState("");
-    const [search, setSearch] = useState("");
-
-    // Entries per page
-    const [limit, setLimit] = useState(10);
-
-    // Sort
-    const [sortBy, setSortBy] = useState("createdAt");
-    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-
-    // Pagination
-    const [page, setPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [total, setTotal] = useState(0);
-
-    // Import
+    // Import state
     const [uploading, setUploading] = useState(false);
     const [uploadStatus, setUploadStatus] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-
-    /* ── Reset page when parent filters change ── */
-    useEffect(() => {
-        setPage(1);
-    }, [parentSearch, parentSourceName, parentBrandCategory, parentBrand, parentSize, parentYear]);
-
-    /* ══════════════════════════
-       Fetch Competitor Products
-    ══════════════════════════ */
-    const fetchProducts = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const params = new URLSearchParams({
-                page: String(page),
-                limit: String(limit),
-                sort: sortBy,
-                order: sortOrder,
-            });
-
-            // Combine parent search + local search
-            const combinedSearch = [parentSearch, search].filter(Boolean).join(" ");
-            if (combinedSearch) params.set("search", combinedSearch);
-
-            // Pass parent filters (mapped to API param names)
-            if (parentSourceName) params.set("source_name", parentSourceName);
-            if (parentBrandCategory) params.set("brand_category", parentBrandCategory);
-            if (parentBrand) params.set("brand", parentBrand);
-            if (parentSize) params.set("size", parentSize);
-            if (parentYear) params.set("year", parentYear);
-
-            const res = await fetch(`/api/competitor-products?${params}`);
-            if (!res.ok) throw new Error("Failed to fetch competitor products");
-
-            const data: ApiResponse = await res.json();
-            setProducts(data.products);
-            setTotalPages(data.totalPages);
-            setTotal(data.total);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Something went wrong");
-        } finally {
-            setLoading(false);
-        }
-    }, [page, limit, search, sortBy, sortOrder, parentSearch, parentSourceName, parentBrandCategory, parentBrand, parentSize, parentYear]);
-
-    useEffect(() => {
-        fetchProducts();
-    }, [fetchProducts]);
-
-    /* ── Debounced Search ── */
-    const debounceRef = useRef<NodeJS.Timeout | null>(null);
-    const handleSearchChange = (value: string) => {
-        setSearchInput(value);
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(() => {
-            setSearch(value);
-            setPage(1);
-        }, 400);
-    };
-
-    /* ── Sort handler ── */
-    const handleSort = useCallback((field: string) => {
-        setSortBy((prev) => {
-            if (prev === field) {
-                setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
-                return field;
-            }
-            setSortOrder("asc");
-            return field;
-        });
-        setPage(1);
-    }, []);
 
     /* ── CSV Import ── */
     const handleFile = async (file: File) => {
@@ -194,23 +97,33 @@ function CompetitorProductsTable({
 
                 setUploadStatus(`Saving ${rows.length.toLocaleString()} records...`);
                 try {
-                    const res = await fetch("/api/competitor-products/import", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ data: rows }),
-                    });
-                    const data = await res.json();
-                    if (res.ok) {
-                        toast(data.message || "Import successful", "success");
-                        setUploadStatus(null);
-                        setPage(1);
-                        fetchProducts();
-                    } else {
-                        toast(data.error || "Import failed", "error");
-                        setUploadStatus(null);
+                    const chunkSize = 500;
+                    let successCount = 0;
+
+                    for (let i = 0; i < rows.length; i += chunkSize) {
+                        const chunk = rows.slice(i, i + chunkSize);
+                        setUploadStatus(`Saving records ${i + 1} to ${Math.min(i + chunkSize, rows.length)} of ${rows.length}...`);
+
+                        const res = await fetch("/api/products/import", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ data: chunk, source_type: "competitor" }),
+                            // body: JSON.stringify({ data: chunk }),
+
+                        });
+
+                        if (!res.ok) {
+                            const data = await res.json().catch(() => ({}));
+                            throw new Error(data.error || "Import failed");
+                        }
+                        successCount += chunk.length;
                     }
-                } catch {
-                    toast("Network error. Please try again.", "error");
+
+                    toast(`Successfully imported ${successCount.toLocaleString()} records`, "success");
+                    setUploadStatus(null);
+                    onImportComplete();
+                } catch (err: any) {
+                    toast(err.message || "Network error. Please try again.", "error");
                     setUploadStatus(null);
                 } finally {
                     setUploading(false);
@@ -285,14 +198,13 @@ function CompetitorProductsTable({
                 </div>
             </div>
 
-            {/* ── Controls Bar: Search + Entries ── */}
+            {/* ── Controls Bar: Entries ── */}
             <div className="flex items-center justify-between mb-3 gap-4 flex-wrap">
-                {/* Entries per page */}
                 <div className="flex items-center gap-2 text-[13px] text-gray-400">
                     <span>Show</span>
                     <select
                         value={limit}
-                        onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+                        onChange={(e) => onLimitChange(Number(e.target.value))}
                         className="bg-[#0d1323] border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all cursor-pointer"
                     >
                         {[10, 25, 50, 100].map((n) => (
@@ -301,36 +213,7 @@ function CompetitorProductsTable({
                     </select>
                     <span>entries</span>
                 </div>
-
-                {/* Search */}
-                <div className="relative group">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-indigo-400 transition-colors">
-                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </span>
-                    <input
-                        type="text"
-                        className="w-56 h-[32px] bg-[#0d1323] border border-gray-700 rounded-md pl-8 pr-3 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-inner"
-                        placeholder="Search competitor products..."
-                        value={searchInput}
-                        onChange={(e) => handleSearchChange(e.target.value)}
-                    />
-                </div>
             </div>
-
-            {/* ── Error ── */}
-            {error && (
-                <div className="flex items-center justify-between bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-3">
-                    <span className="text-red-400 text-sm font-medium">{error}</span>
-                    <button
-                        className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-md text-sm font-medium transition-colors"
-                        onClick={fetchProducts}
-                    >
-                        Retry
-                    </button>
-                </div>
-            )}
 
             {/* ── Table ── */}
             <div className="w-full bg-[#0d1323] border border-gray-800 rounded-xl overflow-hidden shadow-xl">
@@ -345,7 +228,7 @@ function CompetitorProductsTable({
                                             ? "cursor-pointer hover:bg-gray-800/50 hover:text-white transition-colors"
                                             : ""
                                             } ${(col as any).align === "right" ? "text-right" : (col as any).align === "center" ? "text-center" : "text-left"} ${col.width}`}
-                                        onClick={col.sortable ? () => handleSort(col.key) : undefined}
+                                        onClick={col.sortable ? () => onSortChange(col.key) : undefined}
                                     >
                                         <div className={`flex items-center ${(col as any).align === "right" ? "justify-end" : (col as any).align === "center" ? "justify-center" : "justify-start"}`}>
                                             {col.label} {col.sortable && <SortIcon field={col.key} />}
@@ -360,7 +243,7 @@ function CompetitorProductsTable({
                                 <tr key={p._id} className="hover:bg-gray-800/40 transition-colors">
                                     {/* Source */}
                                     <td className="px-3 py-2.5 text-gray-400 align-middle text-[13px]">
-                                        {p.source || "—"}
+                                        {p.source_name || "—"}
                                     </td>
 
                                     {/* Item Code */}
@@ -395,12 +278,12 @@ function CompetitorProductsTable({
                                     {/* RunFlat */}
                                     <td className="px-3 py-2.5 align-middle">
                                         <span
-                                            className={`px-2 py-1 rounded-md text-[10px] sm:text-[11px] font-bold tracking-wider uppercase inline-block ${p.runflat
+                                            className={`px-2 py-1 rounded-md text-[10px] sm:text-[11px] font-bold tracking-wider uppercase inline-block ${(p.runflat === "Yes" || p.runflat === true)
                                                 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                                                 : "bg-gray-800 text-gray-500 border border-gray-700"
                                                 }`}
                                         >
-                                            {p.runflat ? "Yes" : "No"}
+                                            {(p.runflat === "Yes" || p.runflat === true) ? "Yes" : "No"}
                                         </span>
                                     </td>
 
@@ -490,7 +373,7 @@ function CompetitorProductsTable({
                         <button
                             className="px-3 py-2 bg-[#0d1323] border border-gray-700 rounded-md text-gray-300 text-[13px] font-medium transition-colors hover:border-indigo-500 hover:text-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-gray-700 disabled:hover:text-gray-300"
                             disabled={page <= 1}
-                            onClick={() => setPage(1)}
+                            onClick={() => onPageChange(1)}
                             title="First page"
                         >
                             «
@@ -498,7 +381,7 @@ function CompetitorProductsTable({
                         <button
                             className="px-3.5 py-2 bg-[#0d1323] border border-gray-700 rounded-md text-gray-300 text-[13px] font-medium transition-colors hover:border-indigo-500 hover:text-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-gray-700 disabled:hover:text-gray-300"
                             disabled={page <= 1}
-                            onClick={() => setPage(page - 1)}
+                            onClick={() => onPageChange(page - 1)}
                             title="Previous page"
                         >
                             ‹ Prev
@@ -512,7 +395,7 @@ function CompetitorProductsTable({
                         <button
                             className="px-3.5 py-2 bg-[#0d1323] border border-gray-700 rounded-md text-gray-300 text-[13px] font-medium transition-colors hover:border-indigo-500 hover:text-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-gray-700 disabled:hover:text-gray-300"
                             disabled={page >= totalPages}
-                            onClick={() => setPage(page + 1)}
+                            onClick={() => onPageChange(page + 1)}
                             title="Next page"
                         >
                             Next ›
@@ -520,7 +403,7 @@ function CompetitorProductsTable({
                         <button
                             className="px-3 py-2 bg-[#0d1323] border border-gray-700 rounded-md text-gray-300 text-[13px] font-medium transition-colors hover:border-indigo-500 hover:text-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-gray-700 disabled:hover:text-gray-300"
                             disabled={page >= totalPages}
-                            onClick={() => setPage(totalPages)}
+                            onClick={() => onPageChange(totalPages)}
                             title="Last page"
                         >
                             »

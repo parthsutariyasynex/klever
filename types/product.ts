@@ -1,5 +1,6 @@
 export interface IProduct {
     _id: string;
+    source_type: "supplier" | "competitor";
     klever_sku: string;
     product_source: string;
     source_name: string;
@@ -25,6 +26,31 @@ export interface IProduct {
     source_date: string;
     createdAt: string;
     qty?: number;
+    // Competitor-specific fields
+    item_code?: string;
+    category?: string;
+    tyre_pattern?: string;
+    date?: string;
+    url?: string;
+}
+
+export interface ICompetitorProduct {
+    _id: string;
+    source_type: "competitor";
+    source_name: string;
+    item_code: string;
+    category: string;
+    brand: string;
+    tyre_pattern: string;
+    size: string;
+    runflat: boolean | string;
+    year: number;
+    country: string;
+    price: number;
+    set_price: number;
+    date: string;
+    url: string;
+    createdAt: string;
 }
 
 export interface Summary {
@@ -53,6 +79,19 @@ export interface ProductsApiResponse {
     total: number;
     page: number;
     totalPages: number;
+    summary: Summary;
+    filterOptions: FilterOptions;
+}
+
+export interface ImportApiResponse {
+    supplierProducts: IProduct[];
+    supplierTotal: number;
+    supplierPage: number;
+    supplierTotalPages: number;
+    competitorProducts: ICompetitorProduct[];
+    competitorTotal: number;
+    competitorPage: number;
+    competitorTotalPages: number;
     summary: Summary;
     filterOptions: FilterOptions;
 }

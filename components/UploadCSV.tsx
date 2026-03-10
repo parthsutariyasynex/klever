@@ -47,24 +47,31 @@ export default function UploadCSV({ onUploadComplete }: UploadCSVProps) {
                 setStatus(`Saving ${rows.length.toLocaleString()} records...`);
 
                 try {
-                    const res = await fetch("/api/products/import", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ data: rows }),
-                    });
+                    const chunkSize = 500;
+                    let successCount = 0;
 
-                    const data = await res.json();
+                    for (let i = 0; i < rows.length; i += chunkSize) {
+                        const chunk = rows.slice(i, i + chunkSize);
+                        setStatus(`Saving records ${i + 1} to ${Math.min(i + chunkSize, rows.length)} of ${rows.length}...`);
 
-                    if (res.ok) {
-                        toast(data.message || "Import successful", "success");
-                        setStatus(null);
-                        onUploadComplete();
-                    } else {
-                        toast(data.error || "Import failed", "error");
-                        setStatus(null);
+                        const res = await fetch("/api/products/import", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ data: chunk }),
+                        });
+
+                        if (!res.ok) {
+                            const data = await res.json().catch(() => ({}));
+                            throw new Error(data.error || "Import failed");
+                        }
+                        successCount += chunk.length;
                     }
-                } catch {
-                    toast("Network error. Please try again.", "error");
+
+                    toast(`Successfully imported ${successCount.toLocaleString()} records`, "success");
+                    setStatus(null);
+                    onUploadComplete();
+                } catch (err: any) {
+                    toast(err.message || "Network error. Please try again.", "error");
                     setStatus(null);
                 } finally {
                     setUploading(false);

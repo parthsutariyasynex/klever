@@ -34,7 +34,9 @@ const CompetitorProductSchema = new Schema<ICompetitorProductDoc>(
         date: { type: String, default: "" },
         url: { type: String, default: "" },
     },
-    { timestamps: true, collection: "competitor_products" }
+    // { timestamps: true, collection: "competitor_products" }
+    { timestamps: true, collection: "products" }
+
 );
 
 // ── Indexes for fast queries ──

@@ -2,462 +2,439 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Product from "@/models/Product";
 
-/*
-  Allowed fields for sorting.
-  Prevents users from sorting by any arbitrary field
-  (security + predictable performance).
-*/
-const ALLOWED_SORT = [
-  "createdAt",
-  "price",
-  "cost",
-  "year",
-  "brand",
-  "product_name",
-  "sku",
+/* ─────────────────────────────────────────────────────────────
+   Allowed sort fields per table type
+───────────────────────────────────────────────────────────── */
+const ALLOWED_SUPPLIER_SORT = [
+  "createdAt", "price", "cost", "year", "brand",
+  "product_name", "sku", "size", "source_name",
 ];
 
-export async function GET(req: NextRequest) {
-  try {
-    // Ensure MongoDB connection
-    await connectDB();
+const ALLOWED_COMPETITOR_SORT = [
+  "createdAt", "source_name", "item_code", "category", "brand",
+  "tyre_pattern", "size", "year", "country", "price", "set_price", "date",
+];
 
-    // Extract query params from request URL
-    const { searchParams } = new URL(req.url);
-    // console.log(searchParams);
+/* ─────────────────────────────────────────────────────────────
+   Helpers
+───────────────────────────────────────────────────────────── */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
-    /*
-      Pagination controls
-      page  -> current page number
-      limit -> number of records per page
-      Limits are capped to avoid heavy DB load
-    */
-    const page = Math.min(Math.max(1, parseInt(searchParams.get("page") ?? "1")), 100);
-    const limit = Math.min(500, Math.max(1, parseInt(searchParams.get("limit") ?? "200")));
+/* ─────────────────────────────────────────────────────────────
+   Build shared filter from query params.
+   Applied to BOTH supplier and competitor sub-queries.
+───────────────────────────────────────────────────────────── */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildSharedFilter(searchParams: URLSearchParams): Record<string, any> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const filter: Record<string, any> = {};
 
-    /*
-      General query parameters
-    */
-    const search = searchParams.get("search") ?? "";
+  const search = searchParams.get("search") ?? "";
+  const brand = searchParams.get("brand") ?? "";
+  const sourceName = searchParams.get("source_name") ?? "";
+  const brandCategory = searchParams.get("brand_category") ?? "";
+  const size = searchParams.get("size") ?? "";
+  const year = searchParams.get("year") ?? "";
+  const country = searchParams.get("country") ?? "";
 
-    /*
-      Sorting configuration
-      - sortBy must exist in allowed fields
-      - sortOrder: asc / desc
-    */
-    const rawSortBy = searchParams.get("sortBy") ?? "createdAt";
-    // const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1;
-    const sortOrderParam = (searchParams.get("sortOrder") || "desc").toLowerCase();
+  /* ── Full-text search ── */
+  if (search) {
+    const searchTokens = search
+      .split(/[,\s]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
 
-    const sortOrder = sortOrderParam === "asc" ? 1 : -1;
-    const sortBy = ALLOWED_SORT.includes(rawSortBy) ? rawSortBy : "createdAt";
-    // console.log("sortOrderParam:", sortOrderParam);
-    // console.log("sortOrder:", sortOrder);
-    // console.log("URL:", req.url);
-    console.log("All params:", Object.fromEntries(searchParams.entries()));
-    // console.log("sortOrder raw:", searchParams.get("sortOrder"));
+    const tokenConditions = searchTokens.map((token) => {
+      const escapedToken = escapeRegex(token);
+      const numericOnly = token.replace(/\D/g, "");
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const conditions: any[] = [
+        { brand: { $regex: escapedToken, $options: "i" } },
+        { size: { $regex: escapedToken, $options: "i" } },
+        { tyre_pattern: { $regex: escapedToken, $options: "i" } },
+        { product_name: { $regex: escapedToken, $options: "i" } },
+        { sku: { $regex: escapedToken, $options: "i" } },
+        { item_code: { $regex: escapedToken, $options: "i" } },
+        { source_name: { $regex: escapedToken, $options: "i" } },
+        { category: { $regex: escapedToken, $options: "i" } },
+      ];
 
-
-    /*
-      Individual filter parameters
-    */
-    const brand = searchParams.get("brand") ?? "";
-    const brandCategory = searchParams.get("brand_category") ?? "";
-    const vehicleType = searchParams.get("vehicle_type") ?? "";
-    const country = searchParams.get("country") ?? "";
-    const year = searchParams.get("year") ?? "";
-    const runflat = searchParams.get("runflat") ?? "";
-    const tyreMarking = searchParams.get("tyre_marking") ?? "";
-    const size = searchParams.get("size") ?? "";
-    const plainSize = searchParams.get("plain_size") ?? "";
-    const loadIndex = searchParams.get("load_index") ?? "";
-    const sourceName = searchParams.get("source_name") ?? "";
-    const qty = searchParams.get("qty") ?? "";
-    const priceMin = searchParams.get("price_min") ?? "";
-    const priceMax = searchParams.get("price_max") ?? "";
-    const costMin = searchParams.get("cost_min") ?? "";
-    const costMax = searchParams.get("cost_max") ?? "";
-
-    // MongoDB filter object
-    const filter: any = {};
-    // console.log("filter", filter);
-    // console.log("latest", latest);
-
-
-    /* -------------------------------------------------------
-       SEARCH LOGIC
-       Flexible search supporting:
-       - Tyre Pattern
-       - SKU
-       - Brand
-       - Size
-       Supports formats like:
-       "michelin 205"
-       "205/55"
-       "bridgestone turanza"
-    -------------------------------------------------------- */
-
-    if (search) {
-      const searchTokens = search
-        .split(/[,\s]+/)
-        .map(s => s.trim())
-        .filter(Boolean)
-        .map(s => s.toLowerCase());
-
-      if (searchTokens.length > 0) {
-
-        // Escape regex special characters
-        const escapeRegex = (str: string): string =>
-          str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-        /*
-          Each token must match at least one field
-          (AND across tokens, OR across fields)
-        */
-        const tokenConditions = searchTokens.map(token => {
-          const escapedToken = escapeRegex(token);
-          const numericOnly = token.replace(/\D/g, "");
-
-          const conditions: any[] = [
-            { product_name: { $regex: escapedToken, $options: "i" } },
-            { brand: { $regex: escapedToken, $options: "i" } },
-            { sku: { $regex: escapedToken, $options: "i" } },
-            { size: { $regex: escapedToken, $options: "i" } },
-          ];
-
-          /*
-            If token contains digits,
-            also search numeric tyre size (plain_size)
-          */
-          if (numericOnly) {
-            conditions.push({
-              $expr: {
-                $regexMatch: {
-                  input: { $toString: "$plain_size" },
-                  regex: numericOnly,
-                },
-              },
-            });
-          }
-
-          return { $or: conditions };
+      if (numericOnly) {
+        conditions.push({
+          $expr: {
+            $regexMatch: {
+              input: { $toString: "$plain_size" },
+              regex: numericOnly,
+            },
+          },
         });
-
-        if (tokenConditions.length > 0) {
-          filter.$and = filter.$and || [];
-          filter.$and.push(...tokenConditions);
-        }
-      }
-    }
-
-    /* -------------------------------------------------------
-       BASIC FILTERS
-       Supports comma-separated filters
-       Example:
-       brand=Michelin,Bridgestone
-    -------------------------------------------------------- */
-
-    if (brand) {
-      const brands = brand.split(",").map(b => b.trim()).filter(Boolean);
-
-      filter.brand = {
-        $in: brands.map(b =>
-          new RegExp(b.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")
-        ),
-      };
-    }
-
-    if (brandCategory) filter.brand_category = brandCategory;
-    if (vehicleType) filter.vehicle_type = vehicleType;
-
-    /*
-      Country filter with multiple support
-    */
-    if (country) {
-      const countries = country.split(",").map(c => c.trim()).filter(Boolean);
-
-      filter.country = {
-        $in: countries.map(c =>
-          new RegExp(c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")
-        ),
-      };
-    }
-
-    if (runflat) filter.runflat = runflat;
-    if (tyreMarking) filter.tyre_marking = tyreMarking;
-    if (loadIndex) filter.load_index = loadIndex;
-    if (sourceName) filter.source_name = sourceName;
-
-    /* -------------------------------------------------------
-       YEAR FILTER
-       Supports multiple years
-       Example:
-       year=2022,2023
-    -------------------------------------------------------- */
-
-    if (year) {
-      const years = year
-        .split(",")
-        .map(y => parseInt(y.trim()))
-        .filter(y => !isNaN(y));
-
-      if (years.length > 0) {
-        filter.year = { $in: years };
-      }
-    }
-
-    /* -------------------------------------------------------
-       SIZE FILTER
-       Supports:
-       - Full tyre size (205/55R16)
-       - Numeric plain size
-    -------------------------------------------------------- */
-
-    if (size) {
-      const sizes = size.split(",").map(s => s.trim()).filter(Boolean);
-
-      const sizeOrConditions = sizes.map(sz => {
-        const cleanSz = sz.trim();
-
-        // Escape regex
-        const escapedSz = cleanSz.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-        const numericOnly = /^\d+$/.test(cleanSz);
-
-        if (numericOnly) {
-          return {
-            $expr: {
-              $regexMatch: {
-                input: { $toString: "$plain_size" },
-                regex: escapedSz,
-              },
-            },
-          };
-        } else {
-          return {
-            $expr: {
-              $regexMatch: {
-                input: { $toString: "$size" },
-                regex: escapedSz,
-                options: "i",
-              },
-            },
-          };
-        }
-      });
-
-      if (sizeOrConditions.length > 0) {
-        filter.$and = filter.$and || [];
-        filter.$and.push({ $or: sizeOrConditions });
       }
 
-    } else if (plainSize) {
-      filter.plain_size = Number(plainSize);
-    }
-
-    /* -------------------------------------------------------
-       QTY FILTER
-       Returns products with minimum quantity
-    -------------------------------------------------------- */
-
-    if (qty) {
-      const parsedQty = Number(qty);
-      if (!isNaN(parsedQty)) filter.qty = { $gte: parsedQty };
-    }
-
-    /* -------------------------------------------------------
-       LATEST PRODUCTS
-       Filters by is_latest field in the database
-    -------------------------------------------------------- */
-
-    const latest = searchParams.get("latest") === "1";
-    if (latest) {
-      filter.is_latest = 1;
-    }
-    /* -------------------------------------------------------
-       PRICE RANGE FILTER
-    -------------------------------------------------------- */
-
-    if (priceMin || priceMax) {
-      const priceFilter: Record<string, number> = {};
-
-      if (priceMin && !isNaN(parseFloat(priceMin)))
-        priceFilter.$gte = parseFloat(priceMin);
-
-      if (priceMax && !isNaN(parseFloat(priceMax)))
-        priceFilter.$lte = parseFloat(priceMax);
-
-      if (Object.keys(priceFilter).length) filter.price = priceFilter;
-    }
-
-    /* -------------------------------------------------------
-       COST RANGE FILTER
-    -------------------------------------------------------- */
-
-    if (costMin || costMax) {
-      const costFilter: Record<string, number> = {};
-
-      if (costMin && !isNaN(parseFloat(costMin)))
-        costFilter.$gte = parseFloat(costMin);
-
-      if (costMax && !isNaN(parseFloat(costMax)))
-        costFilter.$lte = parseFloat(costMax);
-
-      if (Object.keys(costFilter).length) filter.cost = costFilter;
-    }
-
-    /*
-      Pagination skip calculation
-    */
-    const skip = (page - 1) * limit;
-
-    /*
-      Debugging Mongo filter
-    */
-    console.dir(filter, { depth: null });
-
-    /*
-      Run all DB queries in parallel
-      - Product list
-      - Total count
-      - Summary aggregation
-    */
-    const [products, total, summaryAgg] = await Promise.all([
-      Product.find(filter)
-        // .sort({ [sortBy]: sortOrder })
-        .sort({ [sortBy]: sortOrder, _id: sortOrder })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-
-      Product.countDocuments(filter),
-      /*
-        Aggregation for filter dropdown data
-      */
-      Product.aggregate([
-        {
-          $group: {
-            _id: null,
-            totalProducts: { $sum: 1 },
-            averagePrice: { $avg: "$price" },
-            averageCost: { $avg: "$cost" },
-            brands: { $addToSet: "$brand" },
-            brandCategories: { $addToSet: "$brand_category" },
-            vehicleTypes: { $addToSet: "$vehicle_type" },
-            countries: { $addToSet: "$country" },
-            years: { $addToSet: "$year" },
-            runflatOpts: { $addToSet: "$runflat" },
-            tyreMarkings: { $addToSet: "$tyre_marking" },
-            sizes: { $addToSet: "$size" },
-            plainSizes: { $addToSet: "$plain_size" },
-            loadIndexes: { $addToSet: "$load_index" },
-            sourceNames: { $addToSet: "$source_name" },
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            totalProducts: 1,
-            averagePrice: { $round: ["$averagePrice", 2] },
-            averageCost: { $round: ["$averageCost", 2] },
-            totalBrands: { $size: "$brands" },
-            brands: 1,
-            brandCategories: 1,
-            vehicleTypes: 1,
-            countries: 1,
-            years: 1,
-            runflatOpts: 1,
-            tyreMarkings: 1,
-            sizes: 1,
-            plainSizes: 1,
-            loadIndexes: 1,
-            sourceNames: 1,
-          },
-        },
-      ]),
-    ]);
-
-    const summaryData = summaryAgg[0] || {};
-    // console.log("Products year sample:", products.slice(0, 10).map(p => p.year));
-    // console.log("Years from aggregation:", summaryAgg?.[0]?.years);
-
-    /*
-      Final API response
-    */
-    return NextResponse.json({
-      products,
-      total,
-      page,
-      totalPages: Math.ceil(total / limit),
-
-      summary: {
-        totalProducts: summaryData.totalProducts || 0,
-        averagePrice: summaryData.averagePrice || 0,
-        averageCost: summaryData.averageCost || 0,
-        totalBrands: summaryData.totalBrands || 0,
-      },
-
-      filterOptions: {
-        brands: (summaryData.brands || []).filter(Boolean).sort(),
-        brandCategories: (summaryData.brandCategories || []).filter(Boolean).sort(),
-        vehicleTypes: (summaryData.vehicleTypes || []).filter(Boolean).sort(),
-        countries: (summaryData.countries || []).filter(Boolean).sort(),
-        years: (summaryData.years || []).filter(Boolean).sort((a: number, b: number) => b - a),
-        runflatOptions: (summaryData.runflatOpts || []).filter(Boolean).sort(),
-        tyreMarkings: (summaryData.tyreMarkings || []).filter(Boolean).sort(),
-        sizes: (summaryData.sizes || []).filter(Boolean).sort(),
-        plainSizes: (summaryData.plainSizes || []).filter(Boolean).sort((a: number, b: number) => a - b),
-        loadIndexes: (summaryData.loadIndexes || []).filter(Boolean).sort(),
-        sourceNames: (summaryData.sourceNames || []).filter(Boolean).sort(),
-      },
+      return { $or: conditions };
     });
 
-  } catch (error: any) {
+    if (tokenConditions.length > 0) {
+      filter.$and = filter.$and || [];
+      filter.$and.push(...tokenConditions);
+    }
+  }
 
+  /* ── Brand filter ── */
+  if (brand) {
+    const brands = brand.split(",").map((b) => b.trim()).filter(Boolean);
+    filter.brand = {
+      $in: brands.map((b) => new RegExp(escapeRegex(b), "i")),
+    };
+  }
+
+  /* ── Source name filter ── */
+  if (sourceName) {
+    filter.source_name = {
+      $regex: escapeRegex(sourceName),
+      $options: "i",
+    };
+  }
+
+  /* ── Brand category filter (matches both brand_category and category fields) ── */
+  if (brandCategory) {
+    filter.$and = filter.$and || [];
+    filter.$and.push({
+      $or: [
+        { brand_category: { $regex: escapeRegex(brandCategory), $options: "i" } },
+        { category: { $regex: escapeRegex(brandCategory), $options: "i" } },
+      ],
+    });
+  }
+
+  /* ── Country filter ── */
+  if (country) {
+    const countries = country.split(",").map((c) => c.trim()).filter(Boolean);
+    filter.country = {
+      $in: countries.map((c) => new RegExp(escapeRegex(c), "i")),
+    };
+  }
+
+  /* ── Size filter ── */
+  if (size) {
+    const sizes = size.split(",").map((s) => s.trim()).filter(Boolean);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sizeConditions: any[] = sizes.map((sz) => {
+      const escaped = escapeRegex(sz);
+      if (/^\d+$/.test(sz.trim())) {
+        return {
+          $expr: {
+            $regexMatch: {
+              input: { $toString: "$plain_size" },
+              regex: escaped,
+            },
+          },
+        };
+      }
+      return {
+        $expr: {
+          $regexMatch: {
+            input: { $toString: "$size" },
+            regex: escaped,
+            options: "i",
+          },
+        },
+      };
+    });
+
+    if (sizeConditions.length > 0) {
+      filter.$and = filter.$and || [];
+      filter.$and.push({ $or: sizeConditions });
+    }
+  }
+
+  /* ── Year filter ── */
+  if (year) {
+    const years = year.split(",").map((y) => parseInt(y.trim())).filter((y) => !isNaN(y));
+    if (years.length > 0) {
+      filter.year = { $in: years };
+    }
+  }
+
+  return filter;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Auto-migration: runs ONCE on first request.
+   Sets source_type = "supplier" on all old documents that
+   don't have it. After first run, migrated = true and it
+   never runs again for the lifetime of this server process.
+───────────────────────────────────────────────────────────── */
+let migrated = false;
+
+async function autoMigrate() {
+  if (migrated) return;
+
+  const count = await Product.countDocuments({ source_type: { $exists: false } });
+
+  if (count > 0) {
+    console.log(`[auto-migrate] Found ${count} docs without source_type. Setting to "supplier"...`);
+    const result = await Product.updateMany(
+      { source_type: { $exists: false } },
+      { $set: { source_type: "supplier" } }
+    );
+    console.log(`[auto-migrate] Done! Updated ${result.modifiedCount} documents.`);
+  } else {
+    console.log("[auto-migrate] All documents already have source_type. Skipping.");
+  }
+
+  migrated = true;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   GET /api/products
+
+   Returns BOTH supplier and competitor products from the
+   single `products` collection, split by `source_type`.
+───────────────────────────────────────────────────────────── */
+export async function GET(req: NextRequest) {
+  try {
+    await connectDB();
+
+    // Auto-fix old data on first request (runs only once)
+    await autoMigrate();
+
+    const { searchParams } = new URL(req.url);
+
+    /* ── Supplier pagination & sorting ── */
+    const supplierPage = Math.min(
+      Math.max(1, parseInt(searchParams.get("supplier_page") ?? searchParams.get("page") ?? "1")),
+      1000
+    );
+    const supplierLimit = Math.min(
+      500,
+      Math.max(1, parseInt(searchParams.get("supplier_limit") ?? searchParams.get("limit") ?? "10"))
+    );
+    const rawSupplierSort = searchParams.get("sortBy") ?? "createdAt";
+    const supplierSortField = ALLOWED_SUPPLIER_SORT.includes(rawSupplierSort) ? rawSupplierSort : "createdAt";
+    const supplierSortOrder = (searchParams.get("sortOrder") ?? "desc").toLowerCase() === "asc" ? 1 : -1;
+
+    /* ── Competitor pagination & sorting ── */
+    const competitorPage = Math.min(
+      Math.max(1, parseInt(searchParams.get("competitor_page") ?? "1")),
+      1000
+    );
+    const competitorLimit = Math.min(
+      500,
+      Math.max(1, parseInt(searchParams.get("competitor_limit") ?? "10"))
+    );
+    const rawCompetitorSort = searchParams.get("competitor_sortBy") ?? "createdAt";
+    const competitorSortField = ALLOWED_COMPETITOR_SORT.includes(rawCompetitorSort) ? rawCompetitorSort : "createdAt";
+    const competitorSortOrder = (searchParams.get("competitor_sortOrder") ?? "desc").toLowerCase() === "asc" ? 1 : -1;
+
+    /* ── Build shared filter ── */
+    const sharedFilter = buildSharedFilter(searchParams);
+
+    /* ── Supplier filter ──
+       Uses exact match { source_type: "supplier" } so MongoDB can
+       use the compound index { source_type: 1, createdAt: -1 } for sorting.
+
+       IMPORTANT: Run /api/migrate ONCE to set source_type on old documents.
+    */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supplierFilter: Record<string, any> = {
+      ...sharedFilter,
+      source_type: "supplier",
+    };
+    // Preserve $and from shared filter
+    if (sharedFilter.$and) {
+      supplierFilter.$and = [...sharedFilter.$and];
+    }
+
+    // Supplier-only filters
+    const qty = searchParams.get("qty") ?? "";
+    if (qty) {
+      const parsedQty = Number(qty);
+      if (!isNaN(parsedQty)) supplierFilter.qty = { $gte: parsedQty };
+    }
+    const latest = searchParams.get("latest") === "1";
+    if (latest) supplierFilter.is_latest = 1;
+
+    const priceMin = searchParams.get("price_min") ?? "";
+    const priceMax = searchParams.get("price_max") ?? "";
+    if (priceMin || priceMax) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const priceFilter: Record<string, any> = {};
+      if (priceMin && !isNaN(parseFloat(priceMin))) priceFilter.$gte = parseFloat(priceMin);
+      if (priceMax && !isNaN(parseFloat(priceMax))) priceFilter.$lte = parseFloat(priceMax);
+      if (Object.keys(priceFilter).length) supplierFilter.price = priceFilter;
+    }
+
+    const costMin = searchParams.get("cost_min") ?? "";
+    const costMax = searchParams.get("cost_max") ?? "";
+    if (costMin || costMax) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const costFilter: Record<string, any> = {};
+      if (costMin && !isNaN(parseFloat(costMin))) costFilter.$gte = parseFloat(costMin);
+      if (costMax && !isNaN(parseFloat(costMax))) costFilter.$lte = parseFloat(costMax);
+      if (Object.keys(costFilter).length) supplierFilter.cost = costFilter;
+    }
+
+    /* ── Competitor filter ── */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const competitorFilter: Record<string, any> = {
+      ...sharedFilter,
+      source_type: "competitor",
+    };
+    // Deep-clone $and so supplier and competitor don't share array reference
+    if (sharedFilter.$and) {
+      competitorFilter.$and = [...sharedFilter.$and];
+    }
+
+    /* ── Pagination skip ── */
+    const supplierSkip = (supplierPage - 1) * supplierLimit;
+    const competitorSkip = (competitorPage - 1) * competitorLimit;
+
+    /* ── DEBUG LOGS ── */
+    console.log("\n=== GET /api/products DEBUG ===");
+    console.log("Query params:", Object.fromEntries(searchParams.entries()));
+    console.log("Supplier filter:", JSON.stringify(supplierFilter, null, 2));
+    console.log("Competitor filter:", JSON.stringify(competitorFilter, null, 2));
+    console.log("Supplier: page=%d, limit=%d, skip=%d, sort=%s %d",
+      supplierPage, supplierLimit, supplierSkip, supplierSortField, supplierSortOrder);
+    console.log("Competitor: page=%d, limit=%d, skip=%d, sort=%s %d",
+      competitorPage, competitorLimit, competitorSkip, competitorSortField, competitorSortOrder);
+
+    /* ── Run all queries in parallel ──
+       Using distinct() instead of aggregation to avoid
+       MongoDB Atlas free-tier 100MB memory limit.
+       distinct() is index-backed and uses almost no memory.
+    */
+    const [
+      supplierProducts,
+      supplierTotal,
+      competitorProducts,
+      competitorTotal,
+      brands,
+      brandCategories,
+      vehicleTypes,
+      countries,
+      years,
+      runflatOpts,
+      tyreMarkings,
+      sizes,
+      plainSizes,
+      loadIndexes,
+      sourceNames,
+    ] = await Promise.all([
+      // 1. Supplier products (paginated)
+      Product.find(supplierFilter)
+        .sort({ [supplierSortField]: supplierSortOrder, _id: supplierSortOrder })
+        .skip(supplierSkip)
+        .limit(supplierLimit)
+        .lean(),
+
+      // 2. Supplier count
+      Product.countDocuments(supplierFilter),
+
+      // 3. Competitor products (paginated)
+      Product.find(competitorFilter)
+        .sort({ [competitorSortField]: competitorSortOrder, _id: competitorSortOrder })
+        .skip(competitorSkip)
+        .limit(competitorLimit)
+        .lean(),
+
+      // 4. Competitor count
+      Product.countDocuments(competitorFilter),
+
+      // 5–15. Filter options via lightweight distinct() calls
+      Product.distinct("brand"),
+      Product.distinct("brand_category"),
+      Product.distinct("vehicle_type"),
+      Product.distinct("country"),
+      Product.distinct("year"),
+      Product.distinct("runflat"),
+      Product.distinct("tyre_marking"),
+      Product.distinct("size"),
+      Product.distinct("plain_size"),
+      Product.distinct("load_index"),
+      Product.distinct("source_name"),
+    ]);
+
+    /* ── DEBUG: result counts ── */
+    console.log("Results → supplier: %d/%d, competitor: %d/%d",
+      supplierProducts.length, supplierTotal,
+      competitorProducts.length, competitorTotal);
+    console.log("=== END DEBUG ===\n");
+
+    /* ── Response ── */
+    return NextResponse.json({
+      // Supplier data
+      supplierProducts,
+      supplierTotal,
+      supplierPage,
+      supplierTotalPages: Math.ceil(supplierTotal / supplierLimit),
+
+      // Competitor data
+      competitorProducts,
+      competitorTotal,
+      competitorPage,
+      competitorTotalPages: Math.ceil(competitorTotal / competitorLimit),
+
+      // Summary stats
+      summary: {
+        totalProducts: supplierTotal,
+        averagePrice: 0,
+        averageCost: 0,
+        totalBrands: brands.filter(Boolean).length,
+      },
+
+      // Filter dropdown options
+      filterOptions: {
+        brands: brands.filter(Boolean).sort(),
+        brandCategories: brandCategories.filter(Boolean).sort(),
+        vehicleTypes: vehicleTypes.filter(Boolean).sort(),
+        countries: countries.filter(Boolean).sort(),
+        years: years.filter(Boolean).sort((a: number, b: number) => b - a),
+        runflatOptions: runflatOpts.filter(Boolean).sort(),
+        tyreMarkings: tyreMarkings.filter(Boolean).sort(),
+        sizes: sizes.filter(Boolean).sort(),
+        plainSizes: plainSizes.filter(Boolean).sort((a: number, b: number) => a - b),
+        loadIndexes: loadIndexes.filter(Boolean).sort(),
+        sourceNames: sourceNames.filter(Boolean).sort(),
+      },
+    });
+  } catch (error: unknown) {
     console.error("GET /api/products error:", error);
-
     return NextResponse.json(
-      { error: error.message || "Failed to fetch products" },
+      { error: error instanceof Error ? error.message : "Failed to fetch products" },
       { status: 500 }
     );
   }
 }
 
-/*
-  POST API
-  Used to create new product
-*/
+/* ─────────────────────────────────────────────────────────────
+   POST /api/products — Create a single product
+───────────────────────────────────────────────────────────── */
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
-
     const data = await req.json();
 
-    /*
-      Auto generate plain_size
-      (numeric tyre size)
-      Example:
-      205/55R16 → 2055516
-    */
+    // Auto-generate plain_size from size
     if (data.size && !data.plain_size) {
       data.plain_size = Number(data.size.replace(/\D/g, ""));
     }
 
+    // Default source_type to "supplier"
+    if (!data.source_type) {
+      data.source_type = "supplier";
+    }
+
     const newProduct = await Product.create(data);
-
-    return NextResponse.json(
-      { success: true, product: newProduct },
-      { status: 201 }
-    );
-
-  } catch (error: any) {
-
+    return NextResponse.json({ success: true, product: newProduct }, { status: 201 });
+  } catch (error: unknown) {
     console.error("POST /api/products error:", error);
-
     return NextResponse.json(
-      { error: error.message || "Failed to create product" },
+      { error: error instanceof Error ? error.message : "Failed to create product" },
       { status: 500 }
     );
   }
-}   
+}
