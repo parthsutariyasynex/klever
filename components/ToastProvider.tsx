@@ -1,6 +1,11 @@
 "use client";
 
 import { useState, useCallback, createContext, useContext, ReactNode } from "react";
+import {
+    CheckCircleIcon,
+    ExclamationCircleIcon,
+    InformationCircleIcon,
+} from "@heroicons/react/24/solid";
 
 type ToastType = "success" | "error" | "info";
 
@@ -29,11 +34,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
     const addToast = useCallback((message: string, type: ToastType = "info") => {
         const id = nextId++;
+
         setToasts((prev) => [...prev, { id, message, type }]);
 
+        // Auto remove toast after 10 seconds
         setTimeout(() => {
             setToasts((prev) => prev.filter((t) => t.id !== id));
-        }, 4000);
+        }, 10000);
     }, []);
 
     const removeToast = useCallback((id: number) => {
@@ -43,15 +50,35 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     return (
         <ToastContext.Provider value={{ toast: addToast }}>
             {children}
+
             {toasts.length > 0 && (
-                <div className="toast-container">
+                <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[9999] flex flex-col items-center gap-3 w-full px-4">
                     {toasts.map((t) => (
-                        <div key={t.id} className={`toast toast--${t.type} animate-slide-up`}>
-                            <span className="toast__icon">
-                                {t.type === "success" ? "✓" : t.type === "error" ? "✕" : "ℹ"}
+                        <div
+                            key={t.id}
+                            className={`flex items-center gap-3 px-4 py-3 min-w-[320px] max-w-md rounded-lg shadow-lg text-sm font-medium transition-all
+              ${t.type === "success"
+                                    ? "bg-emerald-500 text-white"
+                                    : t.type === "error"
+                                        ? "bg-red-500 text-white"
+                                        : "bg-blue-500 text-white"
+                                }`}
+                        >
+                            {/* Icon */}
+                            <span className="w-5 h-5 flex items-center">
+                                {t.type === "success" && <CheckCircleIcon />}
+                                {t.type === "error" && <ExclamationCircleIcon />}
+                                {t.type === "info" && <InformationCircleIcon />}
                             </span>
-                            <span className="toast__message">{t.message}</span>
-                            <button className="toast__close" onClick={() => removeToast(t.id)}>
+
+                            {/* Message */}
+                            <span className="flex-1">{t.message}</span>
+
+                            {/* Close button */}
+                            <button
+                                onClick={() => removeToast(t.id)}
+                                className="ml-2 text-white/80 hover:text-white text-lg"
+                            >
                                 &times;
                             </button>
                         </div>

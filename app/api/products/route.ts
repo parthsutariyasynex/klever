@@ -248,6 +248,8 @@ export async function GET(req: NextRequest) {
     }
     const latest = searchParams.get("latest") === "1";
     if (latest) supplierFilter.is_latest = 1;
+    console.log("Latest param:", latest);
+    console.log("Supplier Filter:", JSON.stringify(supplierFilter, null, 2));
 
     const priceMin = searchParams.get("price_min") ?? "";
     const priceMax = searchParams.get("price_max") ?? "";
@@ -351,10 +353,10 @@ export async function GET(req: NextRequest) {
     ]);
 
     /* ── DEBUG: result counts ── */
-    console.log("Results → supplier: %d/%d, competitor: %d/%d",
-      supplierProducts.length, supplierTotal,
-      competitorProducts.length, competitorTotal);
-    console.log("=== END DEBUG ===\n");
+    // console.log("Results → supplier: %d/%d, competitor: %d/%d",
+    //   supplierProducts.length, supplierTotal,
+    //   competitorProducts.length, competitorTotal);
+    // console.log("=== END DEBUG ===\n");
 
     /* ── Response ── */
     return NextResponse.json({

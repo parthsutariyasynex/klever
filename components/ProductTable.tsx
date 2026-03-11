@@ -16,17 +16,17 @@ interface ProductTableProps {
 
 const COLUMNS = [
     { key: "source_name", label: "Source", sortable: true, width: "w-[8%]" },
-    { key: "sku", label: "Item Code", sortable: false, width: "w-[9%]" },
-    { key: "brand_category", label: "Category", sortable: false, width: "w-[8%]" },
-    { key: "brand", label: "Brand", sortable: false, width: "w-[8%]" },
-    { key: "product_name", label: "Tyre Pattern", sortable: false, width: "w-[12%]" },
-    { key: "size", label: "Size", sortable: false, width: "w-[9%]" },
-    { key: "runflat", label: "RunFlat", sortable: false, width: "w-[6%]" },
+    { key: "sku", label: "Item Code", sortable: true, width: "w-[9%]" },
+    { key: "brand_category", label: "Category", sortable: true, width: "w-[8%]" },
+    { key: "brand", label: "Brand", sortable: true, width: "w-[8%]" },
+    { key: "product_name", label: "Tyre Pattern", sortable: true, width: "w-[12%]" },
+    { key: "size", label: "Size", sortable: true, width: "w-[9%]" },
+    { key: "runflat", label: "RunFlat", sortable: true, width: "w-[6%]" },
     { key: "year", label: "Year", sortable: true, align: "right", width: "w-[5%]" },
-    { key: "country", label: "Country", sortable: false, width: "w-[7%]" },
-    { key: "qty", label: "Qty", sortable: false, align: "right", width: "w-[4%]" },
+    { key: "country", label: "Country", sortable: true, width: "w-[7%]" },
+    { key: "qty", label: "Qty", sortable: true, align: "right", width: "w-[4%]" },
     { key: "cost", label: "Cost", sortable: true, align: "right", width: "w-[7%]" },
-    { key: "fitting_price", label: "Fitting Price", sortable: false, align: "right", width: "w-[8%]" },
+    { key: "fitting_price", label: "Fitting Price", sortable: true, align: "right", width: "w-[8%]" },
     { key: "source_date", label: "Date", sortable: true, width: "w-[9%]" },
 ];
 
@@ -65,7 +65,7 @@ function ProductTable({ products, loading, page, sortBy, sortOrder, onSort, onDe
     };
 
     return (
-        <div className="flex-1 min-h-0 min-w-0 w-full h-full bg-[#0d1323] border border-gray-800 rounded-xl overflow-auto shadow-xl flex flex-col">
+        <div className="flex-1 min-h-0 min-w-0 w-full h-full bg-[#0d1323] border border-gray-800 rounded-xl overflow-hidden shadow-xl flex flex-col">
 
             <div className="overflow-auto flex-1 h-full custom-scrollbar">
 

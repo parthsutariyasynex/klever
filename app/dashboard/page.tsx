@@ -175,6 +175,10 @@ export default function DashboardPage() {
   const activeFilterCount = [sourceName, brandCategory, brand, size, year, qty, latest ? "true" : ""]
     .filter(Boolean).length;
 
+  // 🔍 Debug
+  useEffect(() => {
+    console.log("Latest state:", latest);
+  }, [latest]);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0a0f1c] text-white overflow-auto">
@@ -285,7 +289,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Latest? Checkbox */}
-            <div className="flex flex-col items-center gap-1 min-w-[44px] flex-none cursor-pointer" onClick={() => { setLatest(!latest); setPage(1); }}>
+            {/* <div className="flex flex-col items-center gap-1 min-w-[44px] flex-none cursor-pointer" onClick={() => { setLatest(!latest); setPage(1); }}>
               <div className="relative flex items-center justify-center w-auto mt-[4px]">
                 <input
                   type="checkbox"
@@ -300,6 +304,38 @@ export default function DashboardPage() {
               <span className="text-[12px] font-semibold tracking-wider text-gray-500 uppercase mt-0.5">
                 Latest?
               </span>
+            </div> */}
+
+            <div className="flex flex-col items-center gap-1 min-w-[44px] flex-none cursor-pointer">
+
+              <div className="relative flex items-center justify-center w-auto mt-[4px]">
+
+                <input
+                  type="checkbox"
+                  className="peer appearance-none w-6 h-6 rounded bg-gray-900 checked:bg-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all border-2 border-gray-700 shadow-inner"
+                  checked={latest}
+                  onChange={(e) => {
+                    setLatest(e.target.checked);
+                    setPage(1);
+                  }}
+                />
+
+                <svg
+                  className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity duration-200"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+
+              </div>
+
+              <span className="text-[12px] font-semibold tracking-wider text-gray-500 uppercase mt-0.5">
+                Latest?
+              </span>
+
             </div>
 
             {/* Actions: Search & Clear (Moved to the end) */}

@@ -609,6 +609,10 @@ export default function UploadCSV({ onUploadComplete }: UploadCSVProps) {
     const [status, setStatus] = useState<string | null>(null);
     const [showImportCard, setShowImportCard] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [uploadStatus, setUploadStatus] = useState<{
+        type: "success" | "error" | "warning" | null;
+        message: string;
+    }>({ type: null, message: "" });
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
@@ -627,13 +631,21 @@ export default function UploadCSV({ onUploadComplete }: UploadCSVProps) {
 
     const handleFile = async (file: File) => {
 
+        // if (!file.name.endsWith(".csv")) {
+        //     toast("Please upload a CSV file.", "error");
+        //     return;
+        // }
         if (!file.name.endsWith(".csv")) {
-            toast("Please upload a CSV file.", "error");
+            setUploadStatus({
+                type: "error",
+                message: "Invalid file. Please upload a CSV file.",
+            });
             return;
         }
 
         setUploading(true);
         setStatus("Parsing CSV...");
+        toast("Import started...", "info");
 
         Papa.parse(file, {
             header: true,
@@ -643,8 +655,17 @@ export default function UploadCSV({ onUploadComplete }: UploadCSVProps) {
 
                 const rows = results.data as Record<string, string>[];
 
+                // if (!rows || rows.length === 0) {
+                //     toast("No data found in CSV.", "error");
+                //     setUploading(false);
+                //     setStatus(null);
+                //     return;
+                // }
                 if (!rows || rows.length === 0) {
-                    toast("No data found in CSV.", "error");
+                    setUploadStatus({
+                        type: "warning",
+                        message: "CSV file is empty.",
+                    });
                     setUploading(false);
                     setStatus(null);
                     return;
@@ -683,15 +704,30 @@ export default function UploadCSV({ onUploadComplete }: UploadCSVProps) {
                     }
 
                     toast(
-                        `Successfully imported ${successCount.toLocaleString()} records`,
+                        `${successCount.toLocaleString()} records imported successfully`,
                         "success"
                     );
+
+                    const skippedCount = rows.length - successCount;
+
+                    if (skippedCount > 0) {
+                        toast(`${skippedCount} records skipped`, "error");
+                    }
+
+                    setUploadStatus({
+                        type: "success",
+                        message: "File uploaded successfully.",
+                    });
 
                     setStatus(null);
                     onUploadComplete();
 
-                } catch (err: any) {
-
+                }
+                catch (err: any) {
+                    setUploadStatus({
+                        type: "error",
+                        message: err.message || "Network error. Please try again.",
+                    });
                     toast(err.message || "Network error. Please try again.", "error");
                     setStatus(null);
 
@@ -702,6 +738,10 @@ export default function UploadCSV({ onUploadComplete }: UploadCSVProps) {
             },
 
             error: () => {
+                setUploadStatus({
+                    type: "error",
+                    message: "Failed to parse CSV file.",
+                });
                 toast("Failed to parse CSV file.", "error");
                 setUploading(false);
                 setStatus(null);
@@ -747,7 +787,7 @@ export default function UploadCSV({ onUploadComplete }: UploadCSVProps) {
 
             {/* Import Card */}
             {showImportCard && (
-                <div className="fixed inset-0 flex items-center justify-center bg-[#0a0f1c]/80 backdrop-blur-md z-50 p-4">
+                <div className="fixed inset-0 flex items-center justify-center bg-[#0a0f1c]/80 backdrop-blur-md z-[999] p-4">
 
                     <div className="bg-[#0d1323] border border-gray-800 rounded-xl shadow-2xl shadow-black/50 w-full max-w-lg overflow-hidden">
 
@@ -776,7 +816,7 @@ export default function UploadCSV({ onUploadComplete }: UploadCSVProps) {
                                 Select CSV File <span className="text-red-400">*</span>
                             </label>
 
-                            <input
+                            {/* <input
                                 ref={fileInputRef}
                                 type="file"
                                 accept=".csv"
@@ -788,7 +828,28 @@ export default function UploadCSV({ onUploadComplete }: UploadCSVProps) {
                                     }
                                     e.target.value = "";
                                 }}
-                            />
+                            /> */}
+                            <div className="flex items-center gap-3 border border-gray-700 rounded-md px-3 py-2 bg-gray-900/50">
+
+                                <label className="cursor-pointer bg-indigo-500/10 text-indigo-400 px-3 py-1.5 rounded-md text-sm font-medium hover:bg-indigo-500/20">
+                                    Choose File
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept=".csv"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) setSelectedFile(file);
+                                        }}
+                                    />
+                                </label>
+
+                                <span className="text-sm text-gray-400 truncate">
+                                    {selectedFile ? selectedFile.name : "No file chosen"}
+                                </span>
+
+                            </div>
                             {selectedFile && (
                                 <p className="text-sm text-emerald-400 mt-2 font-medium flex items-center gap-1.5">
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -802,12 +863,41 @@ export default function UploadCSV({ onUploadComplete }: UploadCSVProps) {
                                 The CSV file should contain product data.
                             </p>
 
+                            {/* STATUS MESSAGE */}
+                            {/* {uploadStatus.type && (
+                                <div
+                                    className={`mt-4 p-3 rounded-md text-sm flex items-start gap-2 border ${uploadStatus.type === "success"
+                                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                                        : uploadStatus.type === "error"
+                                            ? "bg-red-500/10 border-red-500/20 text-red-400"
+                                            : "bg-yellow-500/10 border-yellow-500/20 text-yellow-500"
+                                        }`}
+                                >
+                                    {uploadStatus.type === "success" && (
+                                        <svg className="w-5 h-5 flex-none mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    )}
+                                    {uploadStatus.type === "error" && (
+                                        <svg className="w-5 h-5 flex-none mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    )}
+                                    {uploadStatus.type === "warning" && (
+                                        <svg className="w-5 h-5 flex-none mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                    )}
+                                    <div className="font-medium">{uploadStatus.message}</div>
+                                </div>
+                            )} */}
+
                             <div className="mt-6 flex gap-3 justify-end pt-4 border-t border-gray-800">
 
                                 <button
                                     onClick={() => {
                                         setShowImportCard(false);
-                                        setSelectedFile(null);
+                                        // setSelectedFile(null);
                                     }}
                                     className="px-5 py-2 text-sm font-medium text-gray-400 bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:text-white rounded-md transition-all"
                                 >

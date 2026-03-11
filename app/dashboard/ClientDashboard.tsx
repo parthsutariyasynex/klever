@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import UploadCSV from "@/components/UploadCSV";
 import ProductTable from "@/components/ProductTable";
 import Pagination from "@/components/Pagination";
-import { IProduct, ProductsApiResponse, FilterOptions } from "@/types/product";
+import { IProduct, ImportApiResponse, FilterOptions } from "@/types/product";
+// import { IProduct, ProductsApiResponse, FilterOptions } from "@/types/product";
 import { useToast } from "@/components/ToastProvider";
 
 const EMPTY_FILTERS: FilterOptions = {
@@ -92,11 +93,15 @@ export default function ClientDashboard({
 
       const res = await fetch(`/api/products?${params}`);
       if (!res.ok) throw new Error("Failed to fetch products");
+      // const data: ProductsApiResponse = await res.json();
 
-      const data: ProductsApiResponse = await res.json();
-      setProducts(data.products);
-      setTotalPages(data.totalPages);
-      setTotal(data.total);
+      const data: ImportApiResponse = await res.json();
+      // setProducts(data.products);
+      // setTotalPages(data.totalPages);
+      // setTotal(data.total);
+      setProducts(data.supplierProducts);
+      setTotalPages(data.supplierTotalPages);
+      setTotal(data.supplierTotal);
       setFilterOptions(data.filterOptions);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -268,7 +273,7 @@ export default function ClientDashboard({
             </div>
 
             {/* Latest? Checkbox */}
-            <div className="flex flex-col items-center gap-1 min-w-[44px] flex-none cursor-pointer" onClick={() => { setLatest(!latest); setPage(1); }}>
+            {/* <div className="flex flex-col items-center gap-1 min-w-[44px] flex-none cursor-pointer" onClick={() => { setLatest(!latest); setPage(1); }}>
               <div className="relative flex items-center justify-center w-auto mt-[4px]">
                 <input
                   type="checkbox"
@@ -283,6 +288,37 @@ export default function ClientDashboard({
               <span className="text-[12px] font-semibold tracking-wider text-gray-500 uppercase mt-0.5">
                 Latest?
               </span>
+            </div> */}
+            <div className="flex flex-col items-center gap-1 min-w-[44px] flex-none cursor-pointer">
+
+              <div className="relative flex items-center justify-center w-auto mt-[4px]">
+
+                <input
+                  type="checkbox"
+                  className="peer appearance-none w-6 h-6 rounded bg-gray-900 checked:bg-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all border-2 border-gray-700 shadow-inner"
+                  checked={latest}
+                  onChange={(e) => {
+                    setLatest(e.target.checked);
+                    setPage(1);
+                  }}
+                />
+
+                <svg
+                  className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity duration-200"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+
+              </div>
+
+              <span className="text-[12px] font-semibold tracking-wider text-gray-500 uppercase mt-0.5">
+                Latest?
+              </span>
+
             </div>
 
             {/* Actions: Search & Clear (Moved to the end) */}
@@ -351,15 +387,15 @@ function FilterSelect({ label, value, onChange, options }: {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  // useEffect(() => {
+  //   function handleClickOutside(event: MouseEvent) {
+  //     if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+  //       setIsOpen(false);
+  //     }
+  //   }
+  //   document.addEventListener("mousedown", handleClickOutside);
+  //   return () => document.removeEventListener("mousedown", handleClickOutside);
+  // }, []);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
