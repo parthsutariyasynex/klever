@@ -163,7 +163,7 @@ function CompetitorProductsTable({
                             <p className="text-gray-400 text-xs whitespace-nowrap">{uploadStatus}</p>
                         </div>
                     )}
-                    <button
+                    {/* <button
                         onClick={() => !uploading && fileInputRef.current?.click()}
                         className="px-4 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition flex items-center gap-2 shadow-sm font-medium"
                     >
@@ -182,7 +182,7 @@ function CompetitorProductsTable({
                             />
                         </svg>
                         Import
-                    </button>
+                    </button> */}
                     <input
                         ref={fileInputRef}
                         type="file"
