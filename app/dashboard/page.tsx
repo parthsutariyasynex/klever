@@ -143,13 +143,20 @@ export default function DashboardPage() {
 
   /* ── Handlers ── */
   const handleSort = useCallback((field: string) => {
-    setSortBy((prev) => {
-      if (prev === field) { setSortOrder((o) => (o === "asc" ? "desc" : "asc")); return field; }
+    if (sortBy !== field) {
+      // New column → start ascending
+      setSortBy(field);
       setSortOrder("asc");
-      return field;
-    });
+    } else if (sortOrder === "asc") {
+      // Same column, was asc → go descending
+      setSortOrder("desc");
+    } else {
+      // Same column, was desc → reset to default
+      setSortBy("createdAt");
+      setSortOrder("desc");
+    }
     setPage(1);
-  }, []);
+  }, [sortBy, sortOrder]);
 
   const handleDelete = useCallback((id: string) => {
     setProducts((prev) => prev.filter((p) => p._id !== id));
@@ -418,11 +425,17 @@ export default function DashboardPage() {
             onPageChange={setCompetitorPage}
             onLimitChange={(l) => { setCompetitorLimit(l); setCompetitorPage(1); }}
             onSortChange={(field) => {
-              if (competitorSortBy === field) {
-                setCompetitorSortOrder((o) => (o === "asc" ? "desc" : "asc"));
-              } else {
+              if (competitorSortBy !== field) {
+                // New column → start ascending
                 setCompetitorSortBy(field);
                 setCompetitorSortOrder("asc");
+              } else if (competitorSortOrder === "asc") {
+                // Same column, was asc → go descending
+                setCompetitorSortOrder("desc");
+              } else {
+                // Same column, was desc → reset to default
+                setCompetitorSortBy("createdAt");
+                setCompetitorSortOrder("desc");
               }
               setCompetitorPage(1);
             }}
