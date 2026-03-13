@@ -25,6 +25,8 @@ export interface IProduct {
     source_date: string;
     createdAt: string;
     qty?: number;
+    is_latest: number;
+    created_by?: IProduct;
     // Competitor-specific fields
     item_code?: string;
     category?: string;
@@ -47,9 +49,11 @@ export interface ICompetitorProduct {
     country: string;
     price: number;
     set_price: number;
-    date: string;
+    source_date: string;
     url: string;
     createdAt: string;
+    is_latest: number;
+    created_by?: ICompetitorProduct;
 }
 
 export interface Summary {

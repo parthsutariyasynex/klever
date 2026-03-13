@@ -34,6 +34,8 @@ export interface IProductDoc extends Document {
   url: string;
   createdAt: Date;
   updatedAt: Date;
+  is_latest: number;
+  created_by?: mongoose.Types.ObjectId;
 }
 
 const ProductSchema = new Schema<IProductDoc>(
@@ -63,6 +65,8 @@ const ProductSchema = new Schema<IProductDoc>(
     qty: { type: Number, default: 0 },
     product_image_url: { type: String, default: "" },
     source_date: { type: String, default: "" },
+    is_latest: { type: Number, default: 1, index: true },
+    created_by: { type: Schema.Types.ObjectId, ref: "Product", required: false, index: true },
     // Competitor-specific fields (shared in unified collection)
     item_code: { type: String, default: "" },
     category: { type: String, default: "" },

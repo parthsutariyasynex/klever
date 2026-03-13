@@ -41,8 +41,8 @@ const COMPETITOR_ALIASES: Record<string, string> = {
   year: "year", country: "country",
   price: "price", cost: "price",
   set_price: "set_price", setprice: "set_price",
-  date: "date", source_date: "date", sourcedate: "date",
-  created_at: "date", import_date: "date",
+  date: "source_date", source_date: "source_date", sourcedate: "source_date",
+  created_at: "source_date", import_date: "source_date",
   url: "url", link: "url", product_url: "url", producturl: "url",
 };
 
@@ -141,7 +141,7 @@ function transformCompetitorRow(rawRow: CSVRow): Partial<ProductType> {
     country: safeString(row.country) ?? "",
     price: parseNumber(row.price) ?? 0,
     set_price: parseNumber(row.set_price) ?? 0,
-    date: safeString(row.date) ?? "",
+    source_date: safeString(row.source_date) ?? "",
     url: safeString(row.url) ?? "",
   };
 }

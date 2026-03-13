@@ -18,7 +18,7 @@ const COLUMNS = [
     { key: "country", label: "Country", sortable: true, width: "w-[7%]" },
     { key: "price", label: "Price", sortable: true, align: "right", width: "w-[7%]" },
     { key: "set_price", label: "Set Price", sortable: true, align: "right", width: "w-[7%]" },
-    { key: "date", label: "Date", sortable: true, width: "w-[8%]" },
+    { key: "source_date", label: "Date", sortable: true, width: "w-[8%]" },
     { key: "url", label: "URL", sortable: false, align: "center", width: "w-[4%]" },
 ];
 
@@ -26,6 +26,13 @@ function formatCurrency(val: number) {
     return val != null
         ? `${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         : "—";
+}
+
+function formatDate(val: string | undefined | null): string {
+    if (!val) return "—";
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return val;
+    return d.toISOString().split("T")[0];
 }
 
 /* ── Props (data-driven, no self-fetching) ── */
@@ -248,13 +255,13 @@ function CompetitorProductsTable({
                                     {/* Item Code */}
                                     <td className="px-3 py-2.5 align-middle">
                                         <span className="px-2 py-1 bg-gray-900 border border-gray-700 rounded-md text-[11px] text-gray-300 font-mono tracking-wide selection:bg-indigo-500/30 inline-block break-all">
-                                            {p.item_code || "—"}
+                                            {p.item_code || (p as any).sku || "—"}
                                         </span>
                                     </td>
 
                                     {/* Category */}
                                     <td className="px-3 py-2.5 text-gray-400 align-middle text-[13px]">
-                                        {p.category || "—"}
+                                        {p.category || (p as any).brand_category || "—"}
                                     </td>
 
                                     {/* Brand */}
@@ -266,24 +273,21 @@ function CompetitorProductsTable({
 
                                     {/* Tyre Pattern */}
                                     <td className="px-3 py-2.5 text-gray-200 font-medium selection:bg-indigo-500/30 align-middle text-[13px]">
-                                        {p.tyre_pattern || "—"}
+                                        {p.tyre_pattern || (p as any).product_name || "—"}
                                     </td>
 
                                     {/* Size */}
                                     <td className="px-3 py-2.5 text-gray-300 font-medium align-middle text-[13px]">
-                                        {p.size || "—"}
+                                        {[p.size, (p as any).load_index].filter(Boolean).join(" ") || "—"}
                                     </td>
 
                                     {/* RunFlat */}
                                     <td className="px-3 py-2.5 align-middle">
-                                        <span
-                                            className={`px-2 py-1 rounded-md text-[10px] sm:text-[11px] font-bold tracking-wider uppercase inline-block ${(p.runflat === "Yes" || p.runflat === true)
-                                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                                : "bg-gray-800 text-gray-500 border border-gray-700"
-                                                }`}
-                                        >
-                                            {(p.runflat === "Yes" || p.runflat === true) ? "Yes" : "No"}
-                                        </span>
+                                        {["yes", "true", "1"].includes(String(p.runflat ?? "").trim().toLowerCase()) && (
+                                            <span className="px-2 py-1 rounded-md text-[10px] sm:text-[11px] font-bold tracking-wider uppercase inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                Runflat
+                                            </span>
+                                        )}
                                     </td>
 
                                     {/* Year */}
@@ -308,14 +312,15 @@ function CompetitorProductsTable({
 
                                     {/* Date */}
                                     <td className="px-3 py-2.5 text-gray-500 font-mono align-middle text-[12px]">
-                                        {p.date || "—"}
+                                        {formatDate(p.source_date)}
+
                                     </td>
 
                                     {/* URL */}
                                     <td className="px-3 py-2.5 align-middle text-center">
-                                        {p.url ? (
+                                        {(p.url || (p as any).product_url) ? (
                                             <a
-                                                href={p.url}
+                                                href={p.url || (p as any).product_url}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="inline-flex items-center justify-center text-indigo-400 hover:text-indigo-300 transition-colors"

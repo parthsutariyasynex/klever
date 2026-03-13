@@ -7,7 +7,7 @@ export interface ICompetitorProductDoc extends Document {
     brand: string;
     tyre_pattern: string;
     size: string;
-    runflat: boolean;
+    runflat: string;
     year: number;
     country: string;
     price: number;
@@ -26,7 +26,7 @@ const CompetitorProductSchema = new Schema<ICompetitorProductDoc>(
         brand: { type: String, default: "" },
         tyre_pattern: { type: String, default: "" },
         size: { type: String, default: "" },
-        runflat: { type: Boolean, default: false },
+        runflat: { type: String, default: "" },
         year: { type: Number, default: 0 },
         country: { type: String, default: "" },
         price: { type: Number, default: 0 },

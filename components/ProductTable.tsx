@@ -34,6 +34,8 @@ function formatCurrency(val: number) {
     return val != null ? `${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—";
 }
 
+
+
 function ProductTable({ products, loading, page, sortBy, sortOrder, onSort, onDelete }: ProductTableProps) {
     // function ProductTable({ products, loading, page, sortBy, sortOrder, onSort }: ProductTableProps) {
 
@@ -117,7 +119,7 @@ function ProductTable({ products, loading, page, sortBy, sortOrder, onSort, onDe
                                     {p.product_name || "—"}
                                 </td>
 
-                                <td className="px-3 py-2.5 text-gray-300 font-medium align-middle text-[13px]">{p.size || "—"}</td>
+                                <td className="px-3 py-2.5 text-gray-300 font-medium align-middle text-[13px]">{[p.size, p.load_index].filter(Boolean).join(" ") || "—"}</td>
 
                                 <td className="px-3 py-2.5 align-middle">
                                     <span
@@ -127,6 +129,7 @@ function ProductTable({ products, loading, page, sortBy, sortOrder, onSort, onDe
                                             }`}
                                     >
                                         {p.runflat || "—"}
+
                                     </span>
                                 </td>
 

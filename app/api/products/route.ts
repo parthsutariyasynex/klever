@@ -7,12 +7,12 @@ import Product from "@/models/Product";
 ───────────────────────────────────────────────────────────── */
 const ALLOWED_SUPPLIER_SORT = [
   "createdAt", "price", "cost", "year", "brand",
-  "product_name", "sku", "size", "source_name",
+  "product_name", "sku", "size", "source_name", "source_date",
 ];
 
 const ALLOWED_COMPETITOR_SORT = [
   "createdAt", "source_name", "item_code", "category", "brand",
-  "tyre_pattern", "size", "year", "country", "price", "set_price", "date",
+  "tyre_pattern", "size", "year", "country", "price", "set_price", "source_date",
 ];
 
 /* ─────────────────────────────────────────────────────────────
@@ -37,8 +37,16 @@ function buildSharedFilter(searchParams: URLSearchParams): Record<string, any> {
   const size = searchParams.get("size") ?? "";
   const year = searchParams.get("year") ?? "";
   const country = searchParams.get("country") ?? "";
+  const latestParam = searchParams.get("latest");
 
-  /* ── Full-text search ── */
+  /* ── 1 & 2. is_latest filter ── */
+  if (latestParam === "1") {
+    filter.is_latest = 1;
+  } else if (latestParam === "0") {
+    filter.is_latest = 0;
+  }
+
+  /* ── 3. Search filter ── */
   if (search) {
     const searchTokens = search
       .split(/[,\s]+/)
@@ -51,16 +59,25 @@ function buildSharedFilter(searchParams: URLSearchParams): Record<string, any> {
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const conditions: any[] = [
-        { brand: { $regex: escapedToken, $options: "i" } },
-        { size: { $regex: escapedToken, $options: "i" } },
-        { tyre_pattern: { $regex: escapedToken, $options: "i" } },
         { product_name: { $regex: escapedToken, $options: "i" } },
         { sku: { $regex: escapedToken, $options: "i" } },
-        { item_code: { $regex: escapedToken, $options: "i" } },
-        { source_name: { $regex: escapedToken, $options: "i" } },
+        { brand: { $regex: escapedToken, $options: "i" } },
+        { brand_category: { $regex: escapedToken, $options: "i" } },
         { category: { $regex: escapedToken, $options: "i" } },
+        { country: { $regex: escapedToken, $options: "i" } },
+        { runflat: { $regex: escapedToken, $options: "i" } },
+        { size: { $regex: escapedToken, $options: "i" } },
+        // Also search competitor-specific equivalents
+        { tyre_pattern: { $regex: escapedToken, $options: "i" } },
+        { item_code: { $regex: escapedToken, $options: "i" } },
       ];
 
+      // Year search (if numeric)
+      if (/^\d{4}$/.test(token)) {
+        conditions.push({ year: parseInt(token) });
+      }
+
+      // plain_size search
       if (numericOnly) {
         conditions.push({
           $expr: {
@@ -89,7 +106,7 @@ function buildSharedFilter(searchParams: URLSearchParams): Record<string, any> {
     };
   }
 
-  /* ── Brand category filter (matches both brand_category and category fields) ── */
+  /* ── Brand category filter ── */
   if (brandCategory) {
     filter.$and = filter.$and || [];
     filter.$and.push({
@@ -108,31 +125,35 @@ function buildSharedFilter(searchParams: URLSearchParams): Record<string, any> {
     };
   }
 
-  /* ── Size filter ── */
+  /* ── 5. Size filter (applied to both) ── */
   if (size) {
     const sizes = size.split(",").map((s) => s.trim()).filter(Boolean);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sizeConditions: any[] = sizes.map((sz) => {
-      const escaped = escapeRegex(sz);
-      if (/^\d+$/.test(sz.trim())) {
-        return {
+      const normalizedInput = sz.replace(/\D/g, "");
+      const escapedOriginal = escapeRegex(sz.trim());
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const innerConditions: any[] = [];
+
+      // Match against the normalized numeric sequence (plain_size)
+      if (normalizedInput) {
+        innerConditions.push({
           $expr: {
             $regexMatch: {
               input: { $toString: "$plain_size" },
-              regex: escaped,
+              regex: normalizedInput,
             },
           },
-        };
+        });
       }
-      return {
-        $expr: {
-          $regexMatch: {
-            input: { $toString: "$size" },
-            regex: escaped,
-            options: "i",
-          },
-        },
-      };
+
+      // Match against the original formatted size string
+      innerConditions.push({
+        size: { $regex: escapedOriginal, $options: "i" },
+      });
+
+      return { $or: innerConditions };
     });
 
     if (sizeConditions.length > 0) {
@@ -246,10 +267,6 @@ export async function GET(req: NextRequest) {
       const parsedQty = Number(qty);
       if (!isNaN(parsedQty)) supplierFilter.qty = { $gte: parsedQty };
     }
-    const latest = searchParams.get("latest") === "1";
-    if (latest) supplierFilter.is_latest = 1;
-    console.log("Latest param:", latest);
-    console.log("Supplier Filter:", JSON.stringify(supplierFilter, null, 2));
 
     const priceMin = searchParams.get("price_min") ?? "";
     const priceMax = searchParams.get("price_max") ?? "";
@@ -301,7 +318,7 @@ export async function GET(req: NextRequest) {
        MongoDB Atlas free-tier 100MB memory limit.
        distinct() is index-backed and uses almost no memory.
     */
-    const [
+    let [
       supplierProducts,
       supplierTotal,
       competitorProducts,
@@ -351,6 +368,75 @@ export async function GET(req: NextRequest) {
       Product.distinct("load_index"),
       Product.distinct("source_name"),
     ]);
+
+    /* ── 2. is_latest = 0 extra logic (fetch latest record of same sku/item_code) ── */
+    const latestParamForLogic = searchParams.get("latest");
+    if (latestParamForLogic === "0") {
+      // Create plain objects for safe manipulation
+      const rawSuppliers = JSON.parse(JSON.stringify(supplierProducts));
+      const rawCompetitors = JSON.parse(JSON.stringify(competitorProducts));
+
+      const supplierSkus = rawSuppliers.map((p: any) => p.sku).filter(Boolean);
+      // Competitor key: prefer item_code, fall back to sku
+      const competitorKeys = rawCompetitors.map((p: any) => p.item_code || p.sku).filter(Boolean);
+
+      const [latestSuppliers, latestCompetitors] = await Promise.all([
+        Product.find({ sku: { $in: supplierSkus }, is_latest: 1, product_source: "supplier" }).lean(),
+        Product.find({
+          $or: [
+            { item_code: { $in: competitorKeys } },
+            { sku: { $in: competitorKeys } },
+          ],
+          is_latest: 1,
+          product_source: "competitor",
+        }).lean(),
+      ]);
+
+      const latestSupplyMap = new Map(latestSuppliers.map((p: any) => [p.sku, p]));
+      // Map by both item_code and sku for flexible lookup
+      const latestCompMap = new Map<string, any>();
+      latestCompetitors.forEach((p: any) => {
+        if (p.item_code) latestCompMap.set(p.item_code, p);
+        if (p.sku) latestCompMap.set(p.sku, p);
+      });
+
+      // ── Build Merged Supplier List ──
+      const mergedSuppliers: any[] = [];
+
+      // Group historical records by SKU to insert latest record once per group
+      const supplyGroups = new Map<string, any[]>();
+      rawSuppliers.forEach((p: any) => {
+        if (!supplyGroups.has(p.sku)) supplyGroups.set(p.sku, []);
+        supplyGroups.get(p.sku)?.push(p);
+      });
+
+      supplyGroups.forEach((history, sku) => {
+        const latest = latestSupplyMap.get(sku);
+        if (latest) {
+          mergedSuppliers.push({ ...latest, is_comparison_header: true });
+        }
+        mergedSuppliers.push(...history.map(h => ({ ...h, created_by: latest })));
+      });
+      supplierProducts = mergedSuppliers;
+
+      // ── Build Merged Competitor List ──
+      const mergedCompetitors: any[] = [];
+      const compGroups = new Map<string, any[]>();
+      rawCompetitors.forEach((p: any) => {
+        const key = p.item_code || p.sku || p._id;
+        if (!compGroups.has(key)) compGroups.set(key, []);
+        compGroups.get(key)?.push(p);
+      });
+
+      compGroups.forEach((history, key) => {
+        const latest = latestCompMap.get(key);
+        if (latest) {
+          mergedCompetitors.push({ ...latest, is_comparison_header: true });
+        }
+        mergedCompetitors.push(...history.map(h => ({ ...h, created_by: latest })));
+      });
+      competitorProducts = mergedCompetitors;
+    }
 
     /* ── DEBUG: result counts ── */
     // console.log("Results → supplier: %d/%d, competitor: %d/%d",

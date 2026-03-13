@@ -41,7 +41,7 @@ export default function DashboardPage() {
   const [yearInput, setYearInput] = useState("");
   const [qty, setQty] = useState("");
   const [qtyInput, setQtyInput] = useState("");
-  const [latest, setLatest] = useState(false);
+  const [latest, setLatest] = useState(true);
 
   // Sort
   const [sortBy, setSortBy] = useState("createdAt");
@@ -85,7 +85,7 @@ export default function DashboardPage() {
       if (size) params.set("size", size);
       if (year) params.set("year", year);
       if (qty) params.set("qty", qty);
-      if (latest) params.set("latest", "1");
+      params.set("latest", latest ? "1" : "0");
 
       const res = await fetch(`/api/products?${params}`);
       if (!res.ok) throw new Error("Failed to fetch products");
