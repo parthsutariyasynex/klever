@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Product from "@/models/Product";
 import type { AnyBulkWriteOperation, InferSchemaType } from "mongoose";
+import { formatDDMMM } from "@/lib/utils";
 
 type ProductType = InferSchemaType<typeof Product.schema>;
 
@@ -115,8 +116,8 @@ function transformSupplierRow(row: CSVRow): Partial<ProductType> {
     country: safeString(row.country),
     year: parseNumber(row.year),
     product_image_url: safeString(row.product_image_url),
-    source_date: safeString(row.source_date),
-    date: safeString(row.date),
+    source_date: formatDDMMM(safeString(row.source_date)),
+    date: formatDDMMM(safeString(row.date)),
     url: safeString(row.url),
   };
 }
@@ -141,7 +142,7 @@ function transformCompetitorRow(rawRow: CSVRow): Partial<ProductType> {
     country: safeString(row.country) ?? "",
     price: parseNumber(row.price) ?? 0,
     set_price: parseNumber(row.set_price) ?? 0,
-    source_date: safeString(row.source_date) ?? "",
+    source_date: formatDDMMM(safeString(row.source_date)),
     url: safeString(row.url) ?? "",
   };
 }

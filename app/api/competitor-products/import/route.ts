@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Product from "@/models/Product";
 import type { AnyBulkWriteOperation, InferSchemaType } from "mongoose";
+import { formatDDMMM } from "@/lib/utils";
 
 type ProductType = InferSchemaType<typeof Product.schema>;
 
@@ -133,7 +134,7 @@ function transformRow(rawRow: CSVRow): Partial<ProductType> & { item_code: strin
         country: safeString(row.country) ?? "",
         price: parseNumber(row.price) ?? 0,
         set_price: parseNumber(row.set_price) ?? 0,
-        date: safeString(row.date) ?? "",
+        date: formatDDMMM(safeString(row.date)),
         url: safeString(row.url) ?? "",
     } as Partial<ProductType> & { item_code: string };
 }

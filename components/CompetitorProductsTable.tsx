@@ -4,6 +4,7 @@ import { useState, useRef, memo } from "react";
 import Papa from "papaparse";
 import { useToast } from "./ToastProvider";
 import type { ICompetitorProduct } from "@/types/product";
+import { formatDDMMM } from "@/lib/utils";
 
 /* ── Column Config ── */
 const COLUMNS = [
@@ -29,10 +30,7 @@ function formatCurrency(val: number) {
 }
 
 function formatDate(val: string | undefined | null): string {
-    if (!val) return "—";
-    const d = new Date(val);
-    if (isNaN(d.getTime())) return val;
-    return d.toISOString().split("T")[0];
+    return formatDDMMM(val);
 }
 
 /* ── Props (data-driven, no self-fetching) ── */

@@ -3,6 +3,7 @@
 import { memo, useState } from "react";
 import { IProduct } from "@/types/product";
 import { useToast } from "./ToastProvider";
+import { formatDDMMM } from "@/lib/utils";
 
 interface ProductTableProps {
     products: IProduct[];
@@ -157,9 +158,7 @@ function ProductTable({ products, loading, page, sortBy, sortOrder, onSort, onDe
                                 <td className="px-3 py-2.5 text-gray-300 font-mono text-right align-middle text-[13px]">{formatCurrency(p.fitting_price)}</td>
 
                                 <td className="px-3 py-2.5 text-gray-500 font-mono align-middle text-[12px]">
-                                    {p.source_date
-                                        ? new Date(p.source_date).toISOString().split("T")[0]
-                                        : "—"}
+                                    {formatDDMMM(p.source_date)}
                                 </td>
                             </tr>
                         ))}

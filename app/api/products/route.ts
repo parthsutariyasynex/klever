@@ -8,7 +8,6 @@ import Product from "@/models/Product";
 const ALLOWED_SUPPLIER_SORT = [
   "createdAt", "price", "cost", "year", "brand",
   "product_name", "sku", "size", "source_name", "source_date",
-  "brand_category", "runflat", "fitting_price", "qty", "country",
 ];
 
 const ALLOWED_COMPETITOR_SORT = [
@@ -40,12 +39,13 @@ function buildSharedFilter(searchParams: URLSearchParams): Record<string, any> {
   const country = searchParams.get("country") ?? "";
   const latestParam = searchParams.get("latest");
 
-  /* ── is_latest filter (only when explicitly requested) ── */
+  /* ── 1 & 2. is_latest filter ── */
   if (latestParam === "1") {
     filter.is_latest = 1;
+  } else if (latestParam === "0") {
+    filter.is_latest = 0;
+    
   }
-  /* When latest param is NOT provided, no is_latest filter is added here.
-     Instead, the query layer uses aggregation to get the latest record per SKU. */
 
   /* ── 3. Search filter ── */
   if (search) {
@@ -314,8 +314,49 @@ export async function GET(req: NextRequest) {
     // console.log("Competitor: page=%d, limit=%d, skip=%d, sort=%s %d",
     //   competitorPage, competitorLimit, competitorSkip, competitorSortField, competitorSortOrder);
 
-    /* ── Filter options (lightweight distinct() calls) ── */
-    const filterOptionsPromises = [
+    /* ── Run all queries in parallel ──
+       Using distinct() instead of aggregation to avoid
+       MongoDB Atlas free-tier 100MB memory limit.
+       distinct() is index-backed and uses almost no memory.
+    */
+    let [
+      supplierProducts,
+      supplierTotal,
+      competitorProducts,
+      competitorTotal,
+      brands,
+      brandCategories,
+      vehicleTypes,
+      countries,
+      years,
+      runflatOpts,
+      tyreMarkings,
+      sizes,
+      plainSizes,
+      loadIndexes,
+      sourceNames,
+    ] = await Promise.all([
+      // 1. Supplier products (paginated)
+      Product.find(supplierFilter)
+        .sort({ [supplierSortField]: supplierSortOrder, _id: supplierSortOrder })
+        .skip(supplierSkip)
+        .limit(supplierLimit)
+        .lean(),
+
+      // 2. Supplier count
+      Product.countDocuments(supplierFilter),
+
+      // 3. Competitor products (paginated)
+      Product.find(competitorFilter)
+        .sort({ [competitorSortField]: competitorSortOrder, _id: competitorSortOrder })
+        .skip(competitorSkip)
+        .limit(competitorLimit)
+        .lean(),
+
+      // 4. Competitor count
+      Product.countDocuments(competitorFilter),
+
+      // 5–15. Filter options via lightweight distinct() calls
       Product.distinct("brand"),
       Product.distinct("brand_category"),
       Product.distinct("vehicle_type"),
@@ -327,108 +368,75 @@ export async function GET(req: NextRequest) {
       Product.distinct("plain_size"),
       Product.distinct("load_index"),
       Product.distinct("source_name"),
-    ];
+    ]);
 
-    /*
-     * Laravel-equivalent is_latest logic:
-     *
-     * if is_latest param is provided ("1"):
-     *   → filter where is_latest = 1 on both supplier and competitor
-     *
-     * if is_latest param is NOT provided:
-     *   → get the latest record per SKU (MAX _id grouped by sku)
-     *     for both supplier and competitor
-     */
-    const latestParam = searchParams.get("latest");
+    /* ── 2. is_latest = 0 extra logic (fetch latest record of same sku/item_code) ── */
+    const latestParamForLogic = searchParams.get("latest");
+    if (latestParamForLogic === "0") {
+      // Create plain objects for safe manipulation
+      const rawSuppliers = JSON.parse(JSON.stringify(supplierProducts));
+      const rawCompetitors = JSON.parse(JSON.stringify(competitorProducts));
 
-    let supplierProducts, supplierTotal: number,
-        competitorProducts, competitorTotal: number;
-    let brands, brandCategories, vehicleTypes, countries, years,
-        runflatOpts, tyreMarkings, sizes, plainSizes, loadIndexes, sourceNames;
+      const supplierSkus = rawSuppliers.map((p: any) => p.sku).filter(Boolean);
+      // Competitor key: prefer item_code, fall back to sku
+      const competitorKeys = rawCompetitors.map((p: any) => p.item_code || p.sku).filter(Boolean);
 
-    if (latestParam === "1") {
-      /* ── is_latest = 1: simple filter (already in sharedFilter) ── */
-      [
-        supplierProducts,
-        supplierTotal,
-        competitorProducts,
-        competitorTotal,
-        brands,
-        brandCategories,
-        vehicleTypes,
-        countries,
-        years,
-        runflatOpts,
-        tyreMarkings,
-        sizes,
-        plainSizes,
-        loadIndexes,
-        sourceNames,
-      ] = await Promise.all([
-        Product.find(supplierFilter)
-          .sort({ [supplierSortField]: supplierSortOrder, _id: supplierSortOrder })
-          .skip(supplierSkip)
-          .limit(supplierLimit)
-          .lean(),
-        Product.countDocuments(supplierFilter),
-        Product.find(competitorFilter)
-          .sort({ [competitorSortField]: competitorSortOrder, _id: competitorSortOrder })
-          .skip(competitorSkip)
-          .limit(competitorLimit)
-          .lean(),
-        Product.countDocuments(competitorFilter),
-        ...filterOptionsPromises,
-      ]);
-    } else {
-      /* ── is_latest NOT provided: get latest record per SKU (MAX _id grouped by sku) ── */
-      const [
-        supplierAgg,
-        supplierCountAgg,
-        competitorAgg,
-        competitorCountAgg,
-        ...filterResults
-      ] = await Promise.all([
-        // Supplier: latest record per SKU
-        Product.aggregate([
-          { $match: supplierFilter },
-          { $sort: { _id: -1 } },
-          { $group: { _id: "$sku", doc: { $first: "$$ROOT" } } },
-          { $replaceRoot: { newRoot: "$doc" } },
-          { $sort: { [supplierSortField]: supplierSortOrder, _id: supplierSortOrder } },
-          { $skip: supplierSkip },
-          { $limit: supplierLimit },
-        ]),
-        // Supplier count (unique SKUs)
-        Product.aggregate([
-          { $match: supplierFilter },
-          { $group: { _id: "$sku" } },
-          { $count: "total" },
-        ]),
-        // Competitor: latest record per SKU
-        Product.aggregate([
-          { $match: competitorFilter },
-          { $sort: { _id: -1 } },
-          { $group: { _id: "$sku", doc: { $first: "$$ROOT" } } },
-          { $replaceRoot: { newRoot: "$doc" } },
-          { $sort: { [competitorSortField]: competitorSortOrder, _id: competitorSortOrder } },
-          { $skip: competitorSkip },
-          { $limit: competitorLimit },
-        ]),
-        // Competitor count (unique SKUs)
-        Product.aggregate([
-          { $match: competitorFilter },
-          { $group: { _id: "$sku" } },
-          { $count: "total" },
-        ]),
-        ...filterOptionsPromises,
+      const [latestSuppliers, latestCompetitors] = await Promise.all([
+        Product.find({ sku: { $in: supplierSkus }, is_latest: 1, product_source: "supplier" }).lean(),
+        Product.find({
+          $or: [
+            { item_code: { $in: competitorKeys } },
+            { sku: { $in: competitorKeys } },
+          ],
+          is_latest: 1,
+          product_source: "competitor",
+        }).lean(),
       ]);
 
-      supplierProducts = supplierAgg;
-      supplierTotal = supplierCountAgg[0]?.total ?? 0;
-      competitorProducts = competitorAgg;
-      competitorTotal = competitorCountAgg[0]?.total ?? 0;
-      [brands, brandCategories, vehicleTypes, countries, years, runflatOpts,
-       tyreMarkings, sizes, plainSizes, loadIndexes, sourceNames] = filterResults;
+      const latestSupplyMap = new Map(latestSuppliers.map((p: any) => [p.sku, p]));
+      // Map by both item_code and sku for flexible lookup
+      const latestCompMap = new Map<string, any>();
+      latestCompetitors.forEach((p: any) => {
+        if (p.item_code) latestCompMap.set(p.item_code, p);
+        if (p.sku) latestCompMap.set(p.sku, p);
+      });
+
+      // ── Build Merged Supplier List ──
+      const mergedSuppliers: any[] = [];
+
+      // Group historical records by SKU to insert latest record once per group
+      const supplyGroups = new Map<string, any[]>();
+      rawSuppliers.forEach((p: any) => {
+        if (!supplyGroups.has(p.sku)) supplyGroups.set(p.sku, []);
+        supplyGroups.get(p.sku)?.push(p);
+      });
+
+      supplyGroups.forEach((history, sku) => {
+        const latest = latestSupplyMap.get(sku);
+        if (latest) {
+          mergedSuppliers.push({ ...latest, is_comparison_header: true });
+        }
+        mergedSuppliers.push(...history.map(h => ({ ...h, created_by: latest })));
+      });
+      supplierProducts = mergedSuppliers;
+
+      // ── Build Merged Competitor List ──
+      const mergedCompetitors: any[] = [];
+      const compGroups = new Map<string, any[]>();
+      rawCompetitors.forEach((p: any) => {
+        const key = p.item_code || p.sku || p._id;
+        if (!compGroups.has(key)) compGroups.set(key, []);
+        compGroups.get(key)?.push(p);
+      });
+
+      compGroups.forEach((history, key) => {
+        const latest = latestCompMap.get(key);
+        if (latest) {
+          mergedCompetitors.push({ ...latest, is_comparison_header: true });
+        }
+        mergedCompetitors.push(...history.map(h => ({ ...h, created_by: latest })));
+      });
+      competitorProducts = mergedCompetitors;
     }
 
     /* ── DEBUG: result counts ── */
