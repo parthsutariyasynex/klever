@@ -31,16 +31,18 @@ const COMPETITOR_ALIASES: Record<string, string> = {
   source: "source_name", source_name: "source_name", sourcename: "source_name",
   supplier: "source_name",
   item_code: "item_code", itemcode: "item_code", "item code": "item_code",
-  code: "item_code",
+  code: "item_code", sku: "item_code",
   category: "category", brand_category: "category", brandcategory: "category",
   brand: "brand",
   tyre_pattern: "tyre_pattern", tyrepattern: "tyre_pattern", pattern: "tyre_pattern",
   product_name: "tyre_pattern", productname: "tyre_pattern", name: "tyre_pattern",
   tyre_name: "tyre_pattern",
   size: "size",
+  load_index: "load_index", loadindex: "load_index",
   runflat: "runflat", run_flat: "runflat", is_runflat: "runflat",
   year: "year", country: "country",
-  price: "price", cost: "price",
+  price: "price",
+  cost: "cost",
   set_price: "set_price", setprice: "set_price",
   date: "source_date", source_date: "source_date", sourcedate: "source_date",
   created_at: "source_date", import_date: "source_date",
@@ -122,8 +124,27 @@ function transformSupplierRow(row: CSVRow): Partial<ProductType> {
   };
 }
 
+function detectRunflatFromUrl(url: string | undefined | null): boolean {
+  if (!url) return false;
+  return /run[\s_-]?flat/i.test(url);
+}
+
 function transformCompetitorRow(rawRow: CSVRow): Partial<ProductType> {
   const row = normalizeCompetitorRow(rawRow);
+
+  // Use price field; fall back to cost if price is missing
+  const price = parseNumber(row.price) ?? parseNumber(row.cost) ?? 0;
+
+  const url = safeString(row.url) ?? "";
+
+  // Detect runflat: check explicit field first, then fall back to URL detection
+  let runflat = "No";
+  if (row.runflat != null && String(row.runflat).trim() !== "") {
+    runflat = ["true", "yes", "1"].includes(String(row.runflat).trim().toLowerCase()) ? "Yes" : "No";
+  } else if (detectRunflatFromUrl(url)) {
+    runflat = "Yes";
+  }
+
   return {
     product_source: "competitor",
     source_name: safeString(row.source_name) ?? "",
@@ -132,18 +153,17 @@ function transformCompetitorRow(rawRow: CSVRow): Partial<ProductType> {
     brand: safeString(row.brand) ?? "",
     tyre_pattern: safeString(row.tyre_pattern) ?? "",
     size: safeString(row.size) ?? "",
+    load_index: safeString(row.load_index) ?? "",
     plain_size: row.size
       ? parseNumber(String(row.size).replace(/[^0-9]/g, ""))
       : undefined,
-    runflat: row.runflat != null && String(row.runflat).trim() !== ""
-      ? (["true", "yes", "1"].includes(String(row.runflat).trim().toLowerCase()) ? "Yes" : "No")
-      : "No",
+    runflat,
     year: parseNumber(row.year) ?? 0,
     country: safeString(row.country) ?? "",
-    price: parseNumber(row.price) ?? 0,
+    price,
     set_price: parseNumber(row.set_price) ?? 0,
     source_date: formatDDMMM(safeString(row.source_date)),
-    url: safeString(row.url) ?? "",
+    url,
   };
 }
 

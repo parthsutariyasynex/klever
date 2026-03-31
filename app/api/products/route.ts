@@ -8,11 +8,12 @@ import Product from "@/models/Product";
 const ALLOWED_SUPPLIER_SORT = [
   "createdAt", "price", "cost", "year", "brand",
   "product_name", "sku", "size", "source_name", "source_date",
+  "brand_category", "runflat", "qty", "fitting_price", "country",
 ];
 
 const ALLOWED_COMPETITOR_SORT = [
   "createdAt", "source_name", "item_code", "category", "brand",
-  "tyre_pattern", "size", "year", "country", "price", "set_price", "source_date",
+  "tyre_pattern", "size", "runflat", "year", "country", "price", "set_price", "source_date",
 ];
 
 /* ─────────────────────────────────────────────────────────────

@@ -5,6 +5,7 @@ import Papa from "papaparse";
 import { useToast } from "./ToastProvider";
 import type { ICompetitorProduct } from "@/types/product";
 import { formatDDMMM } from "@/lib/utils";
+import PriceChartModal from "./PriceChartModal";
 
 /* ── Column Config ── */
 const COLUMNS = [
@@ -14,7 +15,7 @@ const COLUMNS = [
     { key: "brand", label: "Brand", sortable: true, width: "w-[8%]" },
     { key: "tyre_pattern", label: "Tyre Pattern", sortable: true, width: "w-[13%]" },
     { key: "size", label: "Size", sortable: true, width: "w-[9%]" },
-    { key: "runflat", label: "RunFlat", sortable: false, width: "w-[6%]" },
+    { key: "runflat", label: "RunFlat", sortable: true, width: "w-[6%]" },
     { key: "year", label: "Year", sortable: true, align: "right", width: "w-[5%]" },
     { key: "country", label: "Country", sortable: true, width: "w-[7%]" },
     { key: "price", label: "Price", sortable: true, align: "right", width: "w-[7%]" },
@@ -77,6 +78,27 @@ function CompetitorProductsTable({
     const [uploading, setUploading] = useState(false);
     const [uploadStatus, setUploadStatus] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Price chart modal state
+    const [chartModal, setChartModal] = useState<{
+        open: boolean;
+        productKey: string;
+        priceField: string;
+        priceLabel: string;
+        productName: string;
+    } | null>(null);
+
+    const openChart = (e: React.MouseEvent, p: ICompetitorProduct, field: "price" | "set_price", label: string) => {
+        e.stopPropagation();
+        const key = p.item_code || (p as any).sku || String(p._id);
+        setChartModal({
+            open: true,
+            productKey: key,
+            priceField: field,
+            priceLabel: label,
+            productName: p.tyre_pattern || (p as any).product_name || key,
+        });
+    };
 
     /* ── CSV Import ── */
     const handleFile = async (file: File) => {
@@ -299,13 +321,31 @@ function CompetitorProductsTable({
                                     </td>
 
                                     {/* Price */}
-                                    <td className="px-3 py-2.5 text-emerald-400 font-mono font-medium text-right align-middle text-[13px]">
-                                        {formatCurrency(p.price)}
+                                    <td
+                                        className="px-3 py-2.5 text-emerald-400 font-mono font-medium text-right align-middle text-[13px] cursor-pointer hover:text-emerald-300 hover:bg-emerald-500/5 transition-colors group/cell"
+                                        onClick={(e) => openChart(e, p, "price", "Price")}
+                                        title="View Price history"
+                                    >
+                                        <span className="flex items-center justify-end gap-1.5">
+                                            {formatCurrency(p.price)}
+                                            <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="opacity-0 group-hover/cell:opacity-100 transition-opacity text-emerald-400">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                            </svg>
+                                        </span>
                                     </td>
 
                                     {/* Set Price */}
-                                    <td className="px-3 py-2.5 text-gray-300 font-mono text-right align-middle text-[13px]">
-                                        {formatCurrency(p.set_price)}
+                                    <td
+                                        className="px-3 py-2.5 text-gray-300 font-mono text-right align-middle text-[13px] cursor-pointer hover:text-indigo-300 hover:bg-indigo-500/5 transition-colors group/cell"
+                                        onClick={(e) => openChart(e, p, "set_price", "Set Price")}
+                                        title="View Set Price history"
+                                    >
+                                        <span className="flex items-center justify-end gap-1.5">
+                                            {formatCurrency(p.set_price)}
+                                            <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="opacity-0 group-hover/cell:opacity-100 transition-opacity text-indigo-400">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                            </svg>
+                                        </span>
                                     </td>
 
                                     {/* Date */}
@@ -314,7 +354,6 @@ function CompetitorProductsTable({
 
                                     </td>
 
-                                    {/* URL */}
                                     <td className="px-3 py-2.5 align-middle text-center">
                                         {(p.url || (p as any).product_url) ? (
                                             <a
@@ -412,6 +451,19 @@ function CompetitorProductsTable({
                         </button>
                     </div>
                 </div>
+            )}
+
+            {/* Price Chart Modal */}
+            {chartModal?.open && (
+                <PriceChartModal
+                    isOpen={chartModal.open}
+                    onClose={() => setChartModal(null)}
+                    productKey={chartModal.productKey}
+                    source="competitor"
+                    priceField={chartModal.priceField}
+                    priceLabel={chartModal.priceLabel}
+                    productName={chartModal.productName}
+                />
             )}
         </div>
     );

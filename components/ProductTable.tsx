@@ -4,6 +4,7 @@ import { memo, useState } from "react";
 import { IProduct } from "@/types/product";
 import { useToast } from "./ToastProvider";
 import { formatDDMMM } from "@/lib/utils";
+import PriceChartModal from "./PriceChartModal";
 
 interface ProductTableProps {
     products: IProduct[];
@@ -43,6 +44,54 @@ function ProductTable({ products, loading, page, sortBy, sortOrder, onSort, onDe
     const perPage = 200;
     const { toast } = useToast();
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
+
+    // Price chart modal state
+    const [chartModal, setChartModal] = useState<{
+        open: boolean;
+        productKey: string;
+        priceField: string;
+        priceLabel: string;
+        productName: string;
+    } | null>(null);
+
+    const openChart = (e: React.MouseEvent, p: IProduct, field: "cost" | "fitting_price", label: string) => {
+        e.stopPropagation();
+        setChartModal({
+            open: true,
+            productKey: p.sku,
+            priceField: field,
+            priceLabel: label,
+            productName: p.product_name || p.sku || "Product",
+        });
+    };
+
+    const handleCopy = async (p: IProduct) => {
+        if (window.getSelection()?.toString()) return;
+
+        // Raw tab-separated format
+        const values = [
+            p.brand_category || "—",
+            p.brand || "—",
+            p.product_name || "—",
+            [p.size, p.load_index].filter(Boolean).join(" ") || "—",
+            p.year ?? "—",
+            p.country || "—",
+            p.qty ?? 0,
+            p.cost != null ? p.cost.toFixed(2) : "—"
+        ];
+
+        const text = values.join(" - ");
+
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopiedId(p._id);
+            // toast("Copied successfully", "success");
+            setTimeout(() => setCopiedId(null), 1000);
+        } catch (err) {
+            // toast("Failed to copy", "error");
+        }
+    };
 
     const handleDelete = async (id: string) => {
         if (!confirm("Delete this product?")) return;
@@ -97,8 +146,9 @@ function ProductTable({ products, loading, page, sortBy, sortOrder, onSort, onDe
                         {products.map((p, idx) => (
                             <tr
                                 key={p._id}
-                                className={`hover:bg-gray-800/40 transition-colors ${deletingId === p._id ? "opacity-50 pointer-events-none" : ""
-                                    }`}
+                                onClick={() => handleCopy(p)}
+                                className={`group cursor-pointer transition-all duration-300 relative ${deletingId === p._id ? "opacity-50 pointer-events-none" : ""
+                                    } ${copiedId === p._id ? "bg-indigo-500/10" : "hover:bg-gray-800/40"}`}
                             >
                                 <td className="px-3 py-2.5 text-gray-400 align-middle text-[13px]">{p.source_name || "—"}</td>
 
@@ -153,12 +203,41 @@ function ProductTable({ products, loading, page, sortBy, sortOrder, onSort, onDe
                                     {p.qty ?? 0}
                                 </td>
 
-                                <td className="px-3 py-2.5 text-emerald-400 font-mono font-medium text-right align-middle text-[13px]">{formatCurrency(p.cost)}</td>
+                                <td
+                                    className="px-3 py-2.5 text-emerald-400 font-mono font-medium text-right align-middle text-[13px] cursor-pointer hover:text-emerald-300 hover:bg-emerald-500/5 transition-colors group/cell"
+                                    onClick={(e) => openChart(e, p, "cost", "Cost")}
+                                    title="View Cost history"
+                                >
+                                    <span className="flex items-center justify-end gap-1.5">
+                                        {formatCurrency(p.cost)}
+                                        <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="opacity-0 group-hover/cell:opacity-100 transition-opacity text-emerald-400">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                        </svg>
+                                    </span>
+                                </td>
 
-                                <td className="px-3 py-2.5 text-gray-300 font-mono text-right align-middle text-[13px]">{formatCurrency(p.fitting_price)}</td>
+                                <td
+                                    className="px-3 py-2.5 text-gray-300 font-mono text-right align-middle text-[13px] cursor-pointer hover:text-indigo-300 hover:bg-indigo-500/5 transition-colors group/cell"
+                                    onClick={(e) => openChart(e, p, "fitting_price", "Fitting Price")}
+                                    title="View Fitting Price history"
+                                >
+                                    <span className="flex items-center justify-end gap-1.5">
+                                        {formatCurrency(p.fitting_price)}
+                                        <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="opacity-0 group-hover/cell:opacity-100 transition-opacity text-indigo-400">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                        </svg>
+                                    </span>
+                                </td>
 
-                                <td className="px-3 py-2.5 text-gray-500 font-mono align-middle text-[12px]">
-                                    {formatDDMMM(p.source_date)}
+                                <td className="px-3 py-2.5 text-gray-500 font-mono align-middle text-[12px] relative">
+                                    <div className="flex items-center justify-between">
+                                        <span>{formatDDMMM(p.source_date)}</span>
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="text-indigo-400">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -183,6 +262,32 @@ function ProductTable({ products, loading, page, sortBy, sortOrder, onSort, onDe
                         </>
                     )}
                 </div>
+            )}
+
+            {/* Price Chart Modal */}
+            {chartModal?.open && (
+                <PriceChartModal
+                    isOpen={chartModal.open}
+                    onClose={() => setChartModal(null)}
+                    productKey={chartModal.productKey}
+                    source="supplier"
+                    priceField={chartModal.priceField}
+                    priceLabel={chartModal.priceLabel}
+                    productName={chartModal.productName}
+                />
+            )}
+
+            {/* Price Chart Modal */}
+            {chartModal?.open && (
+                <PriceChartModal
+                    isOpen={chartModal.open}
+                    onClose={() => setChartModal(null)}
+                    productKey={chartModal.productKey}
+                    source="supplier"
+                    priceField={chartModal.priceField}
+                    priceLabel={chartModal.priceLabel}
+                    productName={chartModal.productName}
+                />
             )}
         </div>
     );

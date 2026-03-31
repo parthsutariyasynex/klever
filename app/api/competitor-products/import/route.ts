@@ -51,6 +51,8 @@ const HEADER_ALIASES: Record<string, string> = {
 
     // size
     size: "size",
+    load_index: "load_index",
+    loadindex: "load_index",
 
     // runflat
     runflat: "runflat",
@@ -65,7 +67,7 @@ const HEADER_ALIASES: Record<string, string> = {
 
     // price
     price: "price",
-    cost: "price",
+    cost: "cost",
 
     // set_price
     set_price: "set_price",
@@ -119,8 +121,27 @@ function safeString(value: unknown): string | null {
     return str === "" ? null : str;
 }
 
+function detectRunflatFromUrl(url: string | undefined | null): boolean {
+    if (!url) return false;
+    return /run[\s_-]?flat/i.test(url);
+}
+
 function transformRow(rawRow: CSVRow): Partial<ProductType> & { item_code: string } {
     const row = normalizeRow(rawRow);
+
+    // Use price field; fall back to cost if price is missing
+    const price = parseNumber(row.price) ?? parseNumber(row.cost) ?? 0;
+
+    const url = safeString(row.url) ?? "";
+
+    // Detect runflat: check explicit field first, then fall back to URL detection
+    let runflat = "No";
+    if (row.runflat != null && String(row.runflat).trim() !== "") {
+        runflat = ["true", "yes", "1"].includes(String(row.runflat).trim().toLowerCase()) ? "Yes" : "No";
+    } else if (detectRunflatFromUrl(url)) {
+        runflat = "Yes";
+    }
+
     return {
         product_source: "competitor",
         source_name: safeString(row.source) ?? "",
@@ -129,13 +150,14 @@ function transformRow(rawRow: CSVRow): Partial<ProductType> & { item_code: strin
         brand: safeString(row.brand) ?? "",
         tyre_pattern: safeString(row.tyre_pattern) ?? "",
         size: safeString(row.size) ?? "",
-        runflat: parseRunflat(row.runflat),
+        load_index: safeString(row.load_index) ?? "",
+        runflat,
         year: parseNumber(row.year) ?? 0,
         country: safeString(row.country) ?? "",
-        price: parseNumber(row.price) ?? 0,
+        price,
         set_price: parseNumber(row.set_price) ?? 0,
         date: formatDDMMM(safeString(row.date)),
-        url: safeString(row.url) ?? "",
+        url,
     } as Partial<ProductType> & { item_code: string };
 }
 
