@@ -67,18 +67,16 @@ export async function GET(req: NextRequest) {
         console.log("priceField:", priceField);
         console.log("DB filter:", JSON.stringify(filter, null, 2));
 
-        // ── Fetch ALL records — no is_latest restriction ──────────────────────
+        // ── Fetch ALL records — sort by newest first to prioritize recent data if we hit the limit ──
         const records = await Product.collection
             .find(filter)
             .project({ source_date: 1, [priceField]: 1, createdAt: 1, is_latest: 1 })
-            .limit(500)
+            .sort({ createdAt: -1 })
+            .limit(1000)
             .toArray();
 
         // ── SERVER LOG 2: what did the DB return? ─────────────────────────────
         console.log(`\nDB returned: ${records.length} record(s)`);
-        records.forEach((r: any, i: number) => {
-            console.log(`  [${i}] _id=${r._id} | is_latest=${r.is_latest} | source_date="${r.source_date}" | ${priceField}=${r[priceField]} | createdAt=${r.createdAt}`);
-        });
 
         // ── Multi-format date parser ──────────────────────────────────────────
         const currentYear = new Date().getUTCFullYear();
@@ -101,25 +99,42 @@ export async function GET(req: NextRequest) {
                 return d.isValid() ? d : null;
             }
 
-            // "DD-MMM-YYYY"  e.g. "20-Mar-2026"
-            const a = dayjs(s, "DD-MMM-YYYY", true);
-            if (a.isValid()) return a;
+            // Normalize separators: remove periods (e.g. from "Feb."), replace slashes/spaces with dashes
+            // then remove any leading/trailing dashes and convert to title case for dayjs MMM
+            let cleaned = s.replace(/\./g, "").replace(/[/\s_]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
 
-            // "DD-MMM-YY"    e.g. "20-Mar-26"
-            const b = dayjs(s, "DD-MMM-YY", true);
-            if (b.isValid()) return b;
+            // Try common formats
+            const formats = [
+                "DD-MMM-YYYY",
+                "DD-MMMM-YYYY",
+                "DD-MMM-YY",
+                "DD-MMMM-YY",
+                "DD-MMM",
+                "DD-MMMM",
+                "DD-MM-YYYY",
+                "DD-MM-YY",
+                "YYYY-MM-DD",
+                "YYYY/MM/DD",
+                "MM-DD-YYYY",
+                "MM/DD/YYYY"
+            ];
 
-            // "DD-MMM"       e.g. "13-May"  (no year → current year)
-            const c = dayjs(s, "DD-MMM", true);
-            if (c.isValid()) return c.year(currentYear);
+            for (const fmt of formats) {
+                const p = dayjs(cleaned, fmt, true);
+                if (p.isValid()) {
+                    // If no year was provided, default to current year
+                    if (!fmt.includes("YY")) {
+                        return p.year(currentYear);
+                    }
+                    return p;
+                }
+            }
 
-            // "DD/MM/YYYY"   e.g. "20/03/2026"
-            const e2 = dayjs(s, "DD/MM/YYYY", true);
-            if (e2.isValid()) return e2;
+            // Last resort: non-strict dayjs parse
+            const lastResort = dayjs(s);
+            if (lastResort.isValid()) return lastResort;
 
-            // Last resort
-            const f = dayjs(s);
-            return f.isValid() ? f : null;
+            return null;
         }
 
         // ── Build rows — ALL records, no deduplication ────────────────────────

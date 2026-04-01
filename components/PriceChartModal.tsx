@@ -12,6 +12,8 @@ import {
     CartesianGrid,
     Tooltip,
     Legend,
+    LabelList,
+    ReferenceLine,
 } from "recharts";
 
 /* ─────────────────────────────────────────────────────────────
@@ -50,9 +52,12 @@ const toChartData = (raw: RawPoint[]): ChartPoint[] =>
 const calcDomain = (vals: number[]): [number, number] => {
     if (!vals.length) return [0, 100];
     const lo = Math.min(...vals), hi = Math.max(...vals);
-    if (lo === hi) { const b = Math.max(lo * 0.12, 15); return [lo - b, hi + b]; }
+    if (lo === hi) {
+        const b = Math.max(lo * 0.08, 10);
+        return [Math.max(0, lo - b), hi + b];
+    }
     const pad = (hi - lo) * 0.15;
-    return [Math.floor(lo - pad), Math.ceil(hi + pad)];
+    return [Math.max(0, Math.floor(lo - pad)), Math.ceil(hi + pad)];
 };
 
 /* ─────────────────────────────────────────────────────────────
@@ -187,6 +192,7 @@ function PriceChartModal({
         backgroundColor: `rgba(2, 6, 23, ${visible ? 0.9 : 0})`,
         backdropFilter: visible ? "blur(12px)" : "blur(0px)",
         transition: "all 0.3s ease",
+        overflowY: "auto",
     };
 
     const card: React.CSSProperties = {
@@ -257,13 +263,40 @@ function PriceChartModal({
                     )}
                     {!loading && !error && chartData.length > 0 && (
                         <ResponsiveContainer width="100%" height={320}>
-                            <LineChart data={chartData} margin={{ top: 10, right: 30, left: 8, bottom: 60 }}>
+                            <LineChart data={chartData} margin={{ top: 25, right: 30, left: 8, bottom: 60 }}>
                                 <CartesianGrid strokeDasharray="4 4" stroke="rgba(255,255,255,0.05)" vertical={false} />
                                 <XAxis dataKey="label" type="category" tick={{ fill: "#64748b", fontSize: 11, fontWeight: 500 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} tickMargin={12} interval={0} angle={-45} textAnchor="end" />
                                 <YAxis domain={domain} tick={{ fill: "#64748b", fontSize: 11, fontFamily: "monospace", fontWeight: 500 }} axisLine={false} tickLine={false} tickMargin={12} width={64} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0)} />
                                 <Tooltip content={<CustomTooltip />} cursor={{ stroke: `rgba(255,255,255,0.1)`, strokeWidth: 1 }} />
                                 <Legend verticalAlign="top" align="center" height={40} content={(props) => <CustomLegend {...props} color={lineColor} />} />
-                                <Line type="monotone" dataKey="value" name={priceLabel} stroke={lineColor} strokeWidth={3} dot={{ r: 5, fill: "#0f172a", stroke: lineColor, strokeWidth: 2 }} activeDot={{ r: 7, strokeWidth: 2, stroke: "#fff", fill: lineColor }} isAnimationActive={true} animationDuration={1000} animationEasing="ease-in-out" />
+                                <Line
+                                    type="monotone"
+                                    dataKey="value"
+                                    name={priceLabel}
+                                    stroke={lineColor}
+                                    strokeWidth={4}
+                                    dot={{ r: 6, fill: "#0f172a", stroke: lineColor, strokeWidth: 2 }}
+                                    activeDot={{ r: 8, strokeWidth: 2, stroke: "#fff", fill: lineColor }}
+                                    isAnimationActive={true}
+                                    animationDuration={1000}
+                                    animationEasing="ease-in-out"
+                                >
+                                    <LabelList
+                                        dataKey="value"
+                                        position="top"
+                                        offset={15}
+                                        style={{ fill: "#94a3b8", fontSize: 11, fontWeight: 700, fontFamily: "monospace" }}
+                                        formatter={(v: any) => v != null ? Number(v).toLocaleString() : ""}
+                                    />
+                                </Line>
+                                {chartData.length === 1 && (
+                                    <ReferenceLine
+                                        y={chartData[0].value}
+                                        stroke={lineColor}
+                                        strokeDasharray="3 3"
+                                        opacity={0.5}
+                                    />
+                                )}
                             </LineChart>
                         </ResponsiveContainer>
                     )}

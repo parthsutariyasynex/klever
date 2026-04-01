@@ -194,17 +194,14 @@ export default function DashboardPage() {
     <div className="min-h-screen flex flex-col bg-[#0a0f1c] text-white overflow-auto">
       <div className="w-full mx-auto px-4 md:px-6 flex flex-col h-full">
         {/* Header (Fixed) */}
-        <header className="flex-none flex items-center justify-between py-3 border-b border-gray-800 flex-wrap gap-4">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-500/20">
-                K
-              </div>
-              <span className="text-2xl font-semibold tracking-tight text-white">Klever</span>
+        <header className="flex-none flex flex-col sm:flex-row items-center justify-between py-4 border-b border-gray-800 gap-4">
+          <div className="flex items-center gap-3 self-start sm:self-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-500/20">
+              K
             </div>
-
+            <span className="text-2xl font-semibold tracking-tight text-white">Klever</span>
           </div>
-          <div className="flex-none">
+          <div className="flex-none w-full sm:w-auto">
             <UploadCSV onUploadComplete={handleUploadComplete} />
           </div>
         </header>
@@ -220,19 +217,17 @@ export default function DashboardPage() {
         {!chartOpen && (
           <section className="flex-none mt-3 mb-3 bg-gray-900/50 p-4 rounded-xl border border-gray-800 backdrop-blur-sm shadow-sm transition-all relative z-50">
 
-            <div className="flex flex-row items-end flex-nowrap w-full overflow-visible gap-2">
-
-              <div className="min-w-[60px] flex-[1.5]"><FilterSelect label="Supplier" value={sourceName} onChange={(v) => { setSourceName(v); setPage(1); }} options={filterOptions.sourceNames} /></div>
-              <div className="min-w-[60px] flex-[1.5]">
+            <div className="flex flex-row items-end flex-wrap w-full overflow-visible gap-3 sm:gap-4 lg:flex-nowrap">
+              <div className="w-full sm:w-[calc(50%-8px)] lg:w-40 xl:w-48"><FilterSelect label="Supplier" value={sourceName} onChange={(v) => { setSourceName(v); setPage(1); }} options={filterOptions.sourceNames} /></div>
+              <div className="w-full sm:w-[calc(50%-8px)] lg:w-40 xl:w-full max-w-[200px]">
                 <FilterSelect label="Category" value={brandCategory} onChange={(v) => { setBrandCategory(v); setPage(1); }} options={filterOptions.brandCategories} />
-
               </div>
-              <div className="min-w-[60px] flex-[1.5]">
+              <div className="w-full sm:w-[calc(50%-8px)] lg:w-40 xl:w-full max-w-[200px]">
                 <InlineSearchInput label="Brand" value={brand} onChange={(v) => { setBrand(v); setPage(1); }} options={filterOptions.brands} />
               </div>
 
               {/* Open Search */}
-              <div className="flex flex-col gap-1 min-w-[80px] flex-[2]">
+              <div className="flex flex-col gap-1 w-full sm:w-[calc(50%-8px)] lg:min-w-[150px] lg:flex-1">
                 <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
                   Search
                 </label>
@@ -252,12 +247,8 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* <div className="min-w-[60px] flex-1"><InlineSearchInput label="Size" value={size} onChange={(v) => { setSize(v); setPage(1); }} options={filterOptions.sizes} /></div> */}
-
-              <div className="flex flex-col gap-1 min-w-[60px] flex-1">
-                <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase">
-                  Size
-                </label>
+              <div className="flex flex-col gap-1 w-full sm:w-[calc(33%-8px)] lg:w-28">
+                <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase">Size</label>
                 <input
                   type="text"
                   placeholder="Size..."
@@ -267,14 +258,8 @@ export default function DashboardPage() {
                 />
               </div>
 
-
-              {/* <div className="min-w-[50px] flex-1"><InlineSearchInput label="Year" value={year} onChange={(v) => { setYear(v); setPage(1); }} options={filterOptions.years.map(String)} /></div> */}
-
-
-              <div className="flex flex-col gap-1 min-w-[50px] flex-1">
-                <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase">
-                  Year
-                </label>
+              <div className="flex flex-col gap-1 w-full sm:w-[calc(33%-8px)] lg:w-24">
+                <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase">Year</label>
                 <input
                   type="text"
                   placeholder="Year..."
@@ -284,12 +269,8 @@ export default function DashboardPage() {
                 />
               </div>
 
-              {/* Qty Input */}
-              <div className="flex flex-col gap-1 min-w-[40px] flex-[0.8]">
-                <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
-                  Qty
-                  {qty && <span className="w-1 h-1 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />}
-                </label>
+              <div className="flex flex-col gap-1 w-full sm:w-[calc(33%-8px)] lg:w-20">
+                <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase">Qty</label>
                 <input
                   type="number"
                   placeholder="Qty..."
@@ -299,79 +280,53 @@ export default function DashboardPage() {
                 />
               </div>
 
-              {/* Latest? Checkbox */}
-              {/* <div className="flex flex-col items-center gap-1 min-w-[44px] flex-none cursor-pointer" onClick={() => { setLatest(!latest); setPage(1); }}>
-              <div className="relative flex items-center justify-center w-auto mt-[4px]">
-                <input
-                  type="checkbox"
-                  className="peer appearance-none w-6 h-6 rounded bg-gray-900 checked:bg-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all border-2 border-gray-700 shadow-inner"
-                  checked={latest}
-                  readOnly />
-
-                <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <span className="text-[12px] font-semibold tracking-wider text-gray-500 uppercase mt-0.5">
-                Latest?
-              </span>
-            </div> */}
-
-              <div className="flex flex-col items-center gap-1 min-w-[44px] flex-none cursor-pointer">
-
-                <div className="relative flex items-center justify-center w-auto mt-[4px]">
-
-                  <input
-                    type="checkbox"
-                    className="peer appearance-none w-6 h-6 rounded bg-gray-900 checked:bg-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all border-2 border-gray-700 shadow-inner"
-                    checked={latest}
-                    onChange={(e) => {
-                      setLatest(e.target.checked);
-                      setPage(1);
-                    }}
-                  />
-
-                  <svg
-                    className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity duration-200"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={3}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-
+              <div className="flex items-center gap-3 min-h-[32px]">
+                <div className="flex items-center gap-1 cursor-pointer">
+                  <div className="relative flex items-center justify-center w-auto">
+                    <input
+                      type="checkbox"
+                      className="peer appearance-none w-5 h-5 rounded bg-gray-900 checked:bg-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all border-2 border-gray-700 shadow-inner"
+                      checked={latest}
+                      onChange={(e) => {
+                        setLatest(e.target.checked);
+                        setPage(1);
+                      }}
+                    />
+                    <svg
+                      className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity duration-200"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={3}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Latest?</span>
                 </div>
 
-                <span className="text-[12px] font-semibold tracking-wider text-gray-500 uppercase mt-0.5">
-                  Latest?
-                </span>
-
-              </div>
-
-              {/* Actions: Search & Clear (Moved to the end) */}
-              <div className="flex items-center gap-1.5 h-[32px] flex-none ml-1 cursor-pointer">
-                <button
-                  type="button"
-                  title="Search"
-                  className="w-[32px] h-[32px] flex-none flex items-center justify-center rounded-md bg-indigo-600 hover:bg-indigo-500 transition-all text-white shadow-md shadow-indigo-500/20"
-                  onClick={() => { setPage(1); fetchProducts(); }}
-                >
-                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </button>
-
-                <button
-                  type="button"
-                  title="Clear Search & Filters"
-                  className="w-[32px] h-[32px] flex-none flex items-center justify-center rounded-full bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:text-white transition-all text-gray-400 group"
-                  onClick={clearFilters}
-                >
-                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="group-hover:-rotate-180 transition-transform duration-300">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </button>
+                <div className="flex items-center gap-1.5 ml-1">
+                  <button
+                    type="button"
+                    className="w-8 h-8 flex items-center justify-center rounded-md bg-indigo-600 hover:bg-indigo-500 transition-all text-white shadow-md shadow-indigo-500/20"
+                    onClick={() => { setPage(1); fetchProducts(); }}
+                    title="Search"
+                  >
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    className="w-8 h-8 flex items-center justify-center rounded-md bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:text-white transition-all text-gray-400 group"
+                    onClick={clearFilters}
+                    title="Clear Filters"
+                  >
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="group-hover:-rotate-180 transition-transform duration-300">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </section>
@@ -453,6 +408,7 @@ export default function DashboardPage() {
               setCompetitorPage(1);
             }}
             onImportComplete={() => { setCompetitorPage(1); fetchProducts(); }}
+            onDelete={handleDelete}
             onToggleChart={setChartOpen}
           />
         </section>

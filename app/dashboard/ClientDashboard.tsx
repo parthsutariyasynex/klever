@@ -5,7 +5,6 @@ import UploadCSV from "@/components/UploadCSV";
 import ProductTable from "@/components/ProductTable";
 import Pagination from "@/components/Pagination";
 import { IProduct, ImportApiResponse, FilterOptions } from "@/types/product";
-// import { IProduct, ProductsApiResponse, FilterOptions } from "@/types/product";
 import { useToast } from "@/components/ToastProvider";
 
 const EMPTY_FILTERS: FilterOptions = {
@@ -29,23 +28,17 @@ export default function ClientDashboard({
 }: ClientDashboardProps) {
   const { toast } = useToast();
 
-  // Initialize state with server-fetched data
   const [products, setProducts] = useState<IProduct[]>(initialProducts);
   const [total, setTotal] = useState(initialTotal);
   const [totalPages, setTotalPages] = useState(initialTotalPages);
   const [filterOptions, setFilterOptions] = useState<FilterOptions>(initialFilterOptions || EMPTY_FILTERS);
 
-  // Track if this is the initial mount to prevent redundant fetching
   const isInitialMount = useRef(true);
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Search
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
-
-  // Dropdown & Input filters
   const [sourceName, setSourceName] = useState("");
   const [brandCategory, setBrandCategory] = useState("");
   const [brand, setBrand] = useState("");
@@ -57,32 +50,20 @@ export default function ClientDashboard({
   const [qtyInput, setQtyInput] = useState("");
   const [latest, setLatest] = useState(true);
 
-  // Sort
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-
-  // Pagination
   const [page, setPage] = useState(1);
-
-  // UI State
   const [chartOpen, setChartOpen] = useState(false);
 
-  /* ══════════════════════════
-     Fetch Products (client-side updates)
-  ══════════════════════════ */
   const fetchProducts = useCallback(async () => {
-    // Skip fetching on initial mount because we already have the server data
     if (isInitialMount.current) {
       isInitialMount.current = false;
       return;
     }
-
     setLoading(true);
     setError(null);
-
     try {
       const params = new URLSearchParams({ page: String(page), limit: "200", sortBy, sortOrder });
-
       if (search) params.set("search", search);
       if (sourceName) params.set("source_name", sourceName);
       if (brandCategory) params.set("brand_category", brandCategory);
@@ -94,12 +75,7 @@ export default function ClientDashboard({
 
       const res = await fetch(`/api/products?${params}`);
       if (!res.ok) throw new Error("Failed to fetch products");
-      // const data: ProductsApiResponse = await res.json();
-
       const data: ImportApiResponse = await res.json();
-      // setProducts(data.products);
-      // setTotalPages(data.totalPages);
-      // setTotal(data.total);
       setProducts(data.supplierProducts);
       setTotalPages(data.supplierTotalPages);
       setTotal(data.supplierTotal);
@@ -113,12 +89,11 @@ export default function ClientDashboard({
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-  /* ── Debounced Search & Input ── */
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const handleSearchChange = (value: string) => {
     setSearchInput(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => { setSearch(value); setPage(1); }, 400);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => { setSearch(value); setPage(1); }, 400);
   };
 
   const sizeDebounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -142,7 +117,6 @@ export default function ClientDashboard({
     qtyDebounceRef.current = setTimeout(() => { setQty(value); setPage(1); }, 400);
   };
 
-  /* ── Handlers ── */
   const handleSort = useCallback((field: string) => {
     setSortBy((prev) => {
       if (prev === field) { setSortOrder((o) => (o === "asc" ? "desc" : "asc")); return field; }
@@ -168,7 +142,7 @@ export default function ClientDashboard({
     setSize(""); setSizeInput("");
     setYear(""); setYearInput("");
     setQty(""); setQtyInput("");
-    setLatest(false);
+    setLatest(true);
     setSearch(""); setSearchInput("");
     setPage(1);
   };
@@ -176,17 +150,15 @@ export default function ClientDashboard({
   return (
     <div className="h-screen flex flex-col bg-[#0a0f1c] text-white overflow-hidden">
       <div className="w-full mx-auto px-4 md:px-6 flex flex-col h-full">
-        {/* Header (Fixed) */}
-        <header className="flex-none flex items-center justify-between py-3 border-b border-gray-800 flex-wrap gap-4">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-500/20">
-                K
-              </div>
-              <span className="text-2xl font-semibold tracking-tight text-white">Klever</span>
+        {/* Header */}
+        <header className="flex-none flex items-center justify-between py-3 border-b border-gray-800 gap-4">
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg md:rounded-xl flex items-center justify-center text-white font-bold text-lg md:text-xl shadow-lg">
+              K
             </div>
+            <span className="text-lg md:text-2xl font-semibold tracking-tight">Klever</span>
           </div>
-          <div className="flex-none">
+          <div className="flex-none scale-90 md:scale-100 origin-right">
             <UploadCSV onUploadComplete={handleUploadComplete} />
           </div>
         </header>
@@ -194,280 +166,133 @@ export default function ClientDashboard({
         {error && (
           <div className="flex-none flex items-center justify-between bg-red-500/10 border border-red-500/30 rounded-lg p-3 my-2">
             <span className="text-red-400 text-sm font-medium">{error}</span>
-            <button className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-md text-sm font-medium transition-colors" onClick={fetchProducts}>Retry</button>
+            <button className="text-red-400 hover:underline text-sm font-medium" onClick={fetchProducts}>Retry</button>
           </div>
         )}
 
-        {/* Filters Grid Section (Directly Visible) - Hidden when chart is open */}
+        {/* Filters Section */}
         {!chartOpen && (
-          <section className="flex-none mt-3 mb-3 bg-gray-900/50 p-4 rounded-xl border border-gray-800 backdrop-blur-sm shadow-sm transition-all relative z-50">
-            <div className="flex flex-row items-end flex-nowrap w-full overflow-visible gap-2">
-              <div className="min-w-[60px] flex-[1.5]">
-                <FilterSelect label="Supplier" value={sourceName} onChange={(v) => { setSourceName(v); setPage(1); }} options={filterOptions.sourceNames || []} />
+          <section className="flex-none mt-3 mb-3 bg-gray-900/40 p-3 md:p-4 rounded-xl border border-gray-800 backdrop-blur-md z-50 overflow-y-auto max-h-[35vh] md:max-h-none scrollbar-hide">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-9 gap-3 md:gap-4 items-end">
+
+              {/* Core Filters */}
+              <div className="w-full">
+                <FilterSelect label="Supplier" value={sourceName} onChange={(v: string) => { setSourceName(v); setPage(1); }} options={filterOptions.sourceNames || []} />
               </div>
-              <div className="min-w-[60px] flex-[1.5]">
-                <FilterSelect label="Category" value={brandCategory} onChange={(v) => { setBrandCategory(v); setPage(1); }} options={filterOptions.brandCategories || []} />
+              <div className="w-full">
+                <FilterSelect label="Category" value={brandCategory} onChange={(v: string) => { setBrandCategory(v); setPage(1); }} options={filterOptions.brandCategories || []} />
               </div>
-              <div className="min-w-[60px] flex-[1.5]">
-                <InlineSearchInput label="Brand" value={brand} onChange={(v) => { setBrand(v); setPage(1); }} options={filterOptions.brands || []} />
+              <div className="w-full">
+                <InlineSearchInput label="Brand" value={brand} onChange={(v: string) => { setBrand(v); setPage(1); }} options={filterOptions.brands || []} />
               </div>
 
-              {/* Open Search */}
-              <div className="flex flex-col gap-1 min-w-[80px] flex-[2]">
-                <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
-                  Search
-                </label>
-                <div className="relative group h-[32px] w-full">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-indigo-400 transition-colors">
-                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              {/* Search Field (Wider on larger screens) */}
+              <div className="sm:col-span-2 lg:col-span-1 xl:col-span-2">
+                <label className="text-[10px] font-bold tracking-widest text-gray-500 uppercase block mb-1.5 ml-0.5">Search</label>
+                <div className="relative group h-[32px]">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-indigo-400 transition-colors pointer-events-none">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                   </span>
                   <input
                     type="text"
-                    className="w-full h-full bg-[#0d1323] border border-gray-700 rounded-md pl-8 pr-2 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-inner"
-                    placeholder="Query..."
+                    className="w-full h-full bg-[#0d1323] border border-gray-700/50 rounded-md pl-8 pr-2 py-1 text-xs text-gray-200 placeholder-gray-600 focus:border-indigo-500 outline-none transition-all focus:bg-gray-900 shadow-inner"
+                    placeholder="Search query..."
                     value={searchInput}
                     onChange={(e) => handleSearchChange(e.target.value)}
                   />
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1 min-w-[60px] flex-1">
-                <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase">
-                  Size
-                </label>
-                <input
-                  type="text"
-                  placeholder="Size..."
-                  className="w-full h-[32px] bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
-                  value={sizeInput}
-                  onChange={(e) => handleSizeChange(e.target.value)}
-                />
+              {/* Numeric / Text Attributes */}
+              <div className="w-full">
+                <label className="text-[10px] font-bold tracking-widest text-gray-500 uppercase block mb-1.5 ml-0.5">Size</label>
+                <input type="text" placeholder="Size..." className="w-full h-[32px] bg-[#0d1323] border border-gray-700/50 rounded-md px-2 text-xs text-gray-200 outline-none focus:border-indigo-500 focus:bg-gray-900 transition-all shadow-inner" value={sizeInput} onChange={(e) => handleSizeChange(e.target.value)} />
+              </div>
+              <div className="w-full">
+                <label className="text-[10px] font-bold tracking-widest text-gray-500 uppercase block mb-1.5 ml-0.5">Year</label>
+                <input type="text" placeholder="Year..." className="w-full h-[32px] bg-[#0d1323] border border-gray-700/50 rounded-md px-2 text-xs text-gray-200 outline-none focus:border-indigo-500 focus:bg-gray-900 transition-all shadow-inner" value={yearInput} onChange={(e) => handleYearChange(e.target.value)} />
+              </div>
+              <div className="w-full">
+                <label className="text-[10px] font-bold tracking-widest text-gray-500 uppercase block mb-1.5 ml-0.5">Qty</label>
+                <input type="number" placeholder="Qty..." className="w-full h-[32px] bg-[#0d1323] border border-gray-700/50 rounded-md px-2 text-xs text-gray-200 outline-none focus:border-indigo-500 focus:bg-gray-900 transition-all shadow-inner font-mono" value={qtyInput} onChange={(e) => handleQtyChange(e.target.value)} />
               </div>
 
-              <div className="flex flex-col gap-1 min-w-[50px] flex-1">
-                <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase">
-                  Year
-                </label>
-                <input
-                  type="text"
-                  placeholder="Year..."
-                  className="w-full h-[32px] bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
-                  value={yearInput}
-                  onChange={(e) => handleYearChange(e.target.value)}
-                />
-              </div>
-
-              {/* Qty Input */}
-              <div className="flex flex-col gap-1 min-w-[40px] flex-[0.8]">
-                <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
-                  Qty
-                  {qty && <span className="w-1 h-1 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />}
-                </label>
-                <input
-                  type="number"
-                  placeholder="Qty..."
-                  className="w-full h-[32px] bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono"
-                  value={qtyInput}
-                  onChange={(e) => handleQtyChange(e.target.value)}
-                />
-              </div>
-
-              {/* Latest? Checkbox */}
-              {/* <div className="flex flex-col items-center gap-1 min-w-[44px] flex-none cursor-pointer" onClick={() => { setLatest(!latest); setPage(1); }}>
-              <div className="relative flex items-center justify-center w-auto mt-[4px]">
-                <input
-                  type="checkbox"
-                  className="peer appearance-none w-6 h-6 rounded bg-gray-900 checked:bg-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all border-2 border-gray-700 shadow-inner"
-                  checked={latest}
-                  readOnly
-                />
-                <svg className="absolute w-5 h-5 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <span className="text-[12px] font-semibold tracking-wider text-gray-500 uppercase mt-0.5">
-                Latest?
-              </span>
-            </div> */}
-              <div className="flex flex-col items-center gap-1 min-w-[44px] flex-none cursor-pointer">
-
-                <div className="relative flex items-center justify-center w-auto mt-[4px]">
-
-                  <input
-                    type="checkbox"
-                    className="peer appearance-none w-6 h-6 rounded bg-gray-900 checked:bg-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all border-2 border-gray-700 shadow-inner"
-                    checked={latest}
-                    onChange={(e) => {
-                      setLatest(e.target.checked);
-                      setPage(1);
-                    }}
-                  />
-
-                  <svg
-                    className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity duration-200"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={3}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-
+              {/* Controls & State */}
+              <div className="flex items-center justify-between gap-3 sm:col-span-2 lg:col-span-1 xl:col-span-1">
+                <div className="flex items-center gap-2 group cursor-pointer select-none" onClick={() => { setLatest(!latest); setPage(1); }}>
+                  <div className="relative flex items-center justify-center">
+                    <input type="checkbox" className="peer appearance-none w-5 h-5 rounded bg-[#0d1323] border-2 border-gray-700 checked:bg-indigo-600 checked:border-indigo-500 transition-all cursor-pointer" checked={latest} readOnly />
+                    <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  </div>
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider group-hover:text-gray-400">Latest</span>
                 </div>
 
-                <span className="text-[12px] font-semibold tracking-wider text-gray-500 uppercase mt-0.5">
-                  Latest?
-                </span>
-
+                <div className="flex gap-1.5">
+                  <button onClick={() => { setPage(1); fetchProducts(); }} className="h-8 w-10 flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 rounded-md text-white transition-all shadow-md shadow-indigo-500/10 active:scale-95"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></button>
+                  <button onClick={clearFilters} className="h-8 w-10 flex items-center justify-center bg-gray-800 border border-gray-700 hover:bg-gray-700 rounded-md text-gray-400 hover:text-white transition-all active:scale-95"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg></button>
+                </div>
               </div>
 
-              {/* Actions: Search & Clear (Moved to the end) */}
-              <div className="flex items-center gap-1.5 h-[32px] flex-none ml-1 cursor-pointer">
-                <button
-                  type="button"
-                  title="Search"
-                  className="w-[32px] h-[32px] flex-none flex items-center justify-center rounded-md bg-indigo-600 hover:bg-indigo-500 transition-all text-white shadow-md shadow-indigo-500/20"
-                  onClick={() => { setPage(1); fetchProducts(); }}
-                >
-                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  title="Clear Search & Filters"
-                  className="w-[32px] h-[32px] flex-none flex items-center justify-center rounded-full bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:text-white transition-all text-gray-400 group"
-                  onClick={clearFilters}
-                >
-                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="group-hover:-rotate-180 transition-transform duration-300">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </button>
-              </div>
             </div>
           </section>
         )}
 
-        {/* Product Table (Scrollable) */}
-        <section className="flex-1 min-h-0 mb-4 flex flex-col relative z-0">
-          <ProductTable
-            products={products}
-            loading={loading}
-            page={page}
-            sortBy={sortBy}
-            sortOrder={sortOrder}
-            onSort={handleSort}
-            onDelete={handleDelete}
-            onToggleChart={setChartOpen}
-          />
+        {/* Supplier Products Header */}
+        <div className="flex items-center justify-between mb-4 mt-2">
+          <h2 className="text-lg font-semibold text-white tracking-tight">
+            Supplier Products
+          </h2>
+        </div>
+
+        {/* Table Area */}
+        <section className="flex-1 min-h-0 mb-4 relative z-0 overflow-hidden rounded-xl border border-gray-800 bg-[#0d1323]">
+          <ProductTable products={products} loading={loading} page={page} sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} onDelete={handleDelete} onToggleChart={setChartOpen} />
         </section>
 
-        {/* Pagination (Fixed) */}
-        <section className="flex-none pb-4">
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            perPage={200}
-            onPageChange={setPage}
-          />
-        </section>
+        {/* Pagination */}
+        <footer className="flex-none pb-4">
+          <Pagination page={page} totalPages={totalPages} total={total} perPage={200} onPageChange={setPage} />
+        </footer>
       </div>
     </div>
   );
 }
 
-/* ── Reusable Searchable Dropdown Filter ── */
-function FilterSelect({ label, value, onChange, options }: {
+interface FilterSelectProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  options: string[];
-}) {
+  options: (string | number)[];
+}
+
+function FilterSelect({ label, value, onChange, options }: FilterSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // useEffect(() => {
-  //   function handleClickOutside(event: MouseEvent) {
-  //     if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-  //       setIsOpen(false);
-  //     }
-  //   }
-  //   document.addEventListener("mousedown", handleClickOutside);
-  //   return () => document.removeEventListener("mousedown", handleClickOutside);
-  // }, []);
 
   useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isOpen]);
+    const handleClickOutside = (e: MouseEvent) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setIsOpen(false); };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  const filteredOptions = options.filter(opt =>
-    String(opt).toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = options.filter((o) => String(o).toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <div className="flex flex-col gap-1 relative w-full" ref={dropdownRef}>
-      <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
-        {label}
-        {value && <span className="w-1 h-1 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />}
-      </label>
-
-      {/* Trigger */}
-      <div
-        className="w-full h-[32px] bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all cursor-pointer flex items-center justify-between"
-        onClick={() => { setIsOpen(!isOpen); if (!isOpen) setSearchTerm(""); }}
-      >
-        <span className="truncate pr-2">{value || "All"}</span>
-        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="flex-none">
-          <path d="M5 7.5L10 12.5L15 7.5" stroke="#6B7280" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+      <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">{label}{value && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />}</label>
+      <div className="w-full h-[32px] bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 cursor-pointer flex items-center justify-between" onClick={() => setIsOpen(!isOpen)}>
+        <span className="truncate">{value || "All"}</span>
+        <svg width="12" height="12" viewBox="0 0 20 20" fill="none" className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}><path d="M5 7.5L10 12.5L15 7.5" stroke="#6B7280" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </div>
-
-      {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute top-[calc(100%+4px)] left-0 z-[9999] w-full min-w-[140px] bg-gray-900 border border-gray-700 rounded-md shadow-2xl flex flex-col overflow-hidden">
-          {/* Top internal search */}
-          <div className="flex items-center px-2 py-1.5 border-b border-gray-800 bg-gray-900/80 sticky top-0">
-            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="text-gray-500 mr-1.5 flex-none">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              ref={inputRef}
-              type="text"
-              className="w-full bg-transparent border-none text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-0 p-0"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-
-          <div className="overflow-y-auto max-h-40 p-1 flex-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-            <div
-              className={`px-3 py-1.5 text-xs rounded-sm cursor-pointer transition-colors ${value === "" ? "bg-indigo-500/20 text-indigo-300" : "text-gray-300 hover:bg-gray-800"}`}
-              onClick={() => { onChange(""); setIsOpen(false); setSearchTerm(""); }}
-            >
-              All
-            </div>
-            {filteredOptions.length === 0 ? (
-              <div className="px-3 py-2 text-[10px] text-gray-500 text-center italic">No matching results</div>
-            ) : (
-              filteredOptions.map((opt) => (
-                <div
-                  key={opt}
-                  className={`px-3 py-1.5 text-xs rounded-sm cursor-pointer transition-colors ${value === String(opt) ? "bg-indigo-500/20 text-indigo-300" : "text-gray-300 hover:bg-gray-800"}`}
-                  onClick={() => { onChange(String(opt)); setIsOpen(false); setSearchTerm(""); }}
-                >
-                  {opt}
-                </div>
-              ))
-            )}
+        <div className="absolute top-full left-0 z-[100] w-full mt-1 bg-gray-900 border border-gray-700 rounded-md shadow-2xl flex flex-col overflow-hidden max-h-60">
+          <input type="text" className="w-full bg-gray-800 border-b border-gray-700 p-2 text-xs text-white outline-none" placeholder="Filter..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          <div className="overflow-y-auto">
+            <div className="p-2 text-xs text-gray-400 hover:bg-gray-800 cursor-pointer" onClick={() => { onChange(""); setIsOpen(false); }}>All</div>
+            {filtered.map((o) => <div key={o} className="p-2 text-xs text-gray-200 hover:bg-gray-800 cursor-pointer" onClick={() => { onChange(String(o)); setIsOpen(false); }}>{o}</div>)}
           </div>
         </div>
       )}
@@ -475,98 +300,37 @@ function FilterSelect({ label, value, onChange, options }: {
   );
 }
 
-/* ── Inline Search Input (Autocomplete Combobox) ── */
-function InlineSearchInput({ label, value, onChange, options }: {
+interface InlineSearchInputProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  options: string[];
-}) {
+  options: (string | number)[];
+}
+
+function InlineSearchInput({ label, value, onChange, options }: InlineSearchInputProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(value);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const [term, setTerm] = useState(value);
+  const ref = useRef<HTMLDivElement>(null);
 
+  useEffect(() => { setTerm(value); }, [value]);
   useEffect(() => {
-    setSearchTerm(value);
-  }, [value]);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
+    const handleClickOutside = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false); };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setSearchTerm(val);
-    setIsOpen(true);
-
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      onChange(val);
-    }, 400);
-  };
-
-  const handleOptionClick = (opt: string) => {
-    setSearchTerm(opt);
-    setIsOpen(false);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    onChange(opt);
-  };
-
-  const filteredOptions = options.filter(opt =>
-    String(opt).toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = options.filter((o) => String(o).toLowerCase().includes(term.toLowerCase()));
 
   return (
-    <div className="flex flex-col gap-1 relative w-full" ref={wrapperRef}>
-      <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
-        {label}
-        {value && <span className="w-1 h-1 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />}
-      </label>
-
-      <div className="relative group h-[32px] w-full">
-        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-indigo-400 transition-colors pointer-events-none">
-          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </span>
-        <input
-          type="text"
-          className="w-full h-full bg-gray-900 border border-gray-700 rounded-md pl-[22px] pr-5 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-inner"
-          placeholder={label}
-          value={searchTerm}
-          onChange={handleInputChange}
-          onFocus={() => setIsOpen(true)}
-          onClick={(e) => { setIsOpen(true); e.stopPropagation(); }}
-        />
-        {searchTerm && (
-          <button
-            onClick={() => { setSearchTerm(""); onChange(""); setIsOpen(false); }}
-            className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors cursor-pointer"
-          >
-            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        )}
+    <div className="flex flex-col gap-1 relative w-full" ref={ref}>
+      <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase">{label}</label>
+      <div className="relative h-[32px]">
+        <input type="text" className="w-full h-full bg-gray-900 border border-gray-700 rounded-md px-2 text-xs text-gray-200 focus:border-indigo-500 outline-none" placeholder={label} value={term} onFocus={() => setIsOpen(true)} onChange={(e) => { setTerm(e.target.value); onChange(e.target.value); }} />
+        {term && <button onClick={() => { setTerm(""); onChange(""); setIsOpen(false); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">✕</button>}
       </div>
-
-      {/* Dynamic Options List */}
-      {isOpen && filteredOptions.length > 0 && (
-        <div className="absolute top-[calc(100%+4px)] left-0 z-[9999] w-full min-w-[140px] bg-gray-900 border border-gray-700 rounded-md shadow-2xl flex flex-col overflow-hidden max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent py-1">
-          {filteredOptions.map((opt) => (
-            <div
-              key={opt}
-              className={`px-3 py-1.5 text-xs rounded-sm cursor-pointer transition-colors ${value === String(opt) ? "bg-indigo-500/20 text-indigo-300" : "text-gray-300 hover:bg-gray-800"}`}
-              onClick={(e) => { e.stopPropagation(); handleOptionClick(String(opt)); }}
-            >
-              {opt}
-            </div>
-          ))}
+      {isOpen && filtered.length > 0 && (
+        <div className="absolute top-full left-0 z-[100] w-full mt-1 bg-gray-900 border border-gray-700 rounded-md shadow-2xl max-h-60 overflow-y-auto">
+          {filtered.map((o) => <div key={o} className="p-2 text-xs text-gray-200 hover:bg-gray-800 cursor-pointer" onClick={() => { setTerm(String(o)); onChange(String(o)); setIsOpen(false); }}>{o}</div>)}
         </div>
       )}
     </div>

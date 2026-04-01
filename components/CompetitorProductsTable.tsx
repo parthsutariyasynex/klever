@@ -48,6 +48,7 @@ interface CompetitorProductsTableProps {
     onLimitChange: (limit: number) => void;
     onSortChange: (field: string) => void;
     onImportComplete: () => void;
+    onDelete?: (id: string) => void;
 
     // Optional parent filter states
     parentSearch?: string;
@@ -72,9 +73,54 @@ function CompetitorProductsTable({
     onLimitChange,
     onSortChange,
     onImportComplete,
+    onDelete,
     onToggleChart,
 }: CompetitorProductsTableProps) {
     const { toast } = useToast();
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
+
+    const handleCopy = async (p: ICompetitorProduct) => {
+        if (window.getSelection()?.toString()) return;
+
+        // Raw tab-separated format
+        const values = [
+            p.category || (p as any).brand_category || "—",
+            p.brand || "—",
+            p.tyre_pattern || (p as any).product_name || "—",
+            p.size || "—",
+            p.year ?? "—",
+            p.country || "—",
+            p.price != null ? p.price.toFixed(2) : "—"
+        ];
+
+        const text = values.join(" - ");
+
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopiedId(p._id);
+            setTimeout(() => setCopiedId(null), 1000);
+        } catch (err) { }
+    };
+
+    const handleDelete = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!confirm("Delete this competitor product?")) return;
+        setDeletingId(id);
+        try {
+            const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+            if (res.ok) {
+                toast("Product deleted", "success");
+                onDelete?.(id);
+            } else {
+                toast("Failed to delete", "error");
+            }
+        } catch {
+            toast("Network error", "error");
+        } finally {
+            setDeletingId(null);
+        }
+    };
 
     // Price chart modal state
     const [chartModal, setChartModal] = useState<{
@@ -186,8 +232,8 @@ function CompetitorProductsTable({
     return (
         <div className="mt-8">
             {/* ── Section Header ── */}
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-white tracking-tight">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+                <h2 className="text-base md:text-lg font-semibold text-white tracking-tight">
                     Competitor Products
                 </h2>
 
@@ -252,7 +298,7 @@ function CompetitorProductsTable({
             {/* ── Table ── */}
             <div className="w-full bg-[#0d1323] border border-gray-800 rounded-xl overflow-hidden shadow-xl">
                 <div className="overflow-auto custom-scrollbar">
-                    <table className="w-full text-left border-collapse text-[14px] font-sans break-words">
+                    <table className="min-w-[1200px] w-full text-left border-collapse text-[14px] font-sans break-words">
                         <thead className="sticky top-0 z-10 bg-[#12192e] shadow-sm shadow-black/20">
                             <tr>
                                 {COLUMNS.map((col) => (
@@ -274,7 +320,10 @@ function CompetitorProductsTable({
 
                         <tbody className="divide-y divide-gray-800/60 divide-dashed min-w-full">
                             {products.map((p) => (
-                                <tr key={p._id} className="hover:bg-gray-800/40 transition-colors">
+                                <tr
+                                    key={p._id}
+                                    className={`group transition-all duration-300 relative ${deletingId === p._id ? "opacity-50 pointer-events-none" : "hover:bg-gray-800/40"}`}
+                                >
                                     {/* Source */}
                                     <td className="px-3 py-2.5 text-gray-400 align-middle text-[13px]">
                                         {p.source_name || "—"}
@@ -308,15 +357,17 @@ function CompetitorProductsTable({
                                     <td className="px-3 py-2.5 text-gray-300 font-medium align-middle text-[13px]">
                                         {[p.size, (p as any).load_index].filter(Boolean).join(" ") || "—"}
                                     </td>
-
-                                    {/* RunFlat */}
                                     <td className="px-3 py-2.5 align-middle">
-                                        {["yes", "true", "1"].includes(String(p.runflat ?? "").trim().toLowerCase()) && (
-                                            <span className="px-2 py-1 rounded-md text-[10px] sm:text-[11px] font-bold tracking-wider uppercase inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                                Runflat
-                                            </span>
-                                        )}
+                                        <span
+                                            className={`px-2 py-1 rounded-md text-[10px] sm:text-[11px] font-bold tracking-wider uppercase inline-block ${String(p.runflat || "").toLowerCase() === "yes"
+                                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                                : "bg-gray-800 text-gray-500 border border-gray-700"
+                                                }`}
+                                        >
+                                            {String(p.runflat || "").toLowerCase() === "yes" ? "RUNFLAT" : "—"}
+                                        </span>
                                     </td>
+
 
                                     {/* Year */}
                                     <td className="px-3 py-2.5 text-gray-300 text-right align-middle text-[13px]">
@@ -357,27 +408,39 @@ function CompetitorProductsTable({
                                     </td>
 
                                     {/* Date */}
-                                    <td className="px-3 py-2.5 text-gray-500 font-mono align-middle text-[12px]">
-                                        {formatDate(p.source_date)}
-
+                                    <td className="px-3 py-2.5 text-gray-500 font-mono align-middle text-[12px] relative">
+                                        <span>{formatDate(p.source_date)}</span>
                                     </td>
 
                                     <td className="px-3 py-2.5 align-middle text-center">
-                                        {(p.url || (p as any).product_url) ? (
-                                            <a
-                                                href={p.url || (p as any).product_url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center justify-center text-indigo-400 hover:text-indigo-300 transition-colors"
-                                                title="Open product page"
+                                        <div className="flex items-center justify-center gap-2">
+                                            {(p.url || (p as any).product_url) ? (
+                                                <a
+                                                    href={p.url || (p as any).product_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center justify-center text-indigo-400 hover:text-indigo-300 transition-colors bg-indigo-500/10 p-1.5 rounded-md border border-indigo-500/20"
+                                                    title="Open product page"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                                    </svg>
+                                                </a>
+                                            ) : (
+                                                <span className="text-gray-600">—</span>
+                                            )}
+
+                                            <button
+                                                onClick={(e) => handleDelete(p._id, e)}
+                                                className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                                                title="Delete product"
                                             >
-                                                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                                <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                 </svg>
-                                            </a>
-                                        ) : (
-                                            <span className="text-gray-600">—</span>
-                                        )}
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

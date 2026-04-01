@@ -128,7 +128,7 @@ function ProductTable({ products, loading, page, sortBy, sortOrder, onSort, onDe
 
             <div className="overflow-auto flex-1 h-full custom-scrollbar">
 
-                <table className="w-full text-left border-collapse text-[14px] font-sans break-words pb-4">
+                <table className="min-w-[1200px] w-full text-left border-collapse text-[14px] font-sans break-words pb-4">
 
                     <thead className="sticky top-0 z-10 bg-[#12192e] shadow-sm shadow-black/20">
                         <tr>
