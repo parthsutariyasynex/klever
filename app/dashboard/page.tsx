@@ -53,6 +53,9 @@ export default function DashboardPage() {
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(10);
 
+  // UI State
+  const [chartOpen, setChartOpen] = useState(false);
+
   // Filter options from API
   const [filterOptions, setFilterOptions] = useState<FilterOptions>(EMPTY_FILTERS);
 
@@ -213,90 +216,91 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Filters Grid Section (Directly Visible) */}
-        <section className="flex-none mt-3 mb-3 bg-gray-900/50 p-4 rounded-xl border border-gray-800 backdrop-blur-sm shadow-sm transition-all relative z-50">
+        {/* Filters Grid Section (Directly Visible) - Hidden when chart is open */}
+        {!chartOpen && (
+          <section className="flex-none mt-3 mb-3 bg-gray-900/50 p-4 rounded-xl border border-gray-800 backdrop-blur-sm shadow-sm transition-all relative z-50">
 
-          <div className="flex flex-row items-end flex-nowrap w-full overflow-visible gap-2">
+            <div className="flex flex-row items-end flex-nowrap w-full overflow-visible gap-2">
 
-            <div className="min-w-[60px] flex-[1.5]"><FilterSelect label="Supplier" value={sourceName} onChange={(v) => { setSourceName(v); setPage(1); }} options={filterOptions.sourceNames} /></div>
-            <div className="min-w-[60px] flex-[1.5]">
-              <FilterSelect label="Category" value={brandCategory} onChange={(v) => { setBrandCategory(v); setPage(1); }} options={filterOptions.brandCategories} />
+              <div className="min-w-[60px] flex-[1.5]"><FilterSelect label="Supplier" value={sourceName} onChange={(v) => { setSourceName(v); setPage(1); }} options={filterOptions.sourceNames} /></div>
+              <div className="min-w-[60px] flex-[1.5]">
+                <FilterSelect label="Category" value={brandCategory} onChange={(v) => { setBrandCategory(v); setPage(1); }} options={filterOptions.brandCategories} />
 
-            </div>
-            <div className="min-w-[60px] flex-[1.5]">
-              <InlineSearchInput label="Brand" value={brand} onChange={(v) => { setBrand(v); setPage(1); }} options={filterOptions.brands} />
-            </div>
+              </div>
+              <div className="min-w-[60px] flex-[1.5]">
+                <InlineSearchInput label="Brand" value={brand} onChange={(v) => { setBrand(v); setPage(1); }} options={filterOptions.brands} />
+              </div>
 
-            {/* Open Search */}
-            <div className="flex flex-col gap-1 min-w-[80px] flex-[2]">
-              <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
-                Search
-              </label>
-              <div className="relative group h-[32px] w-full">
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-indigo-400 transition-colors">
-                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </span>
+              {/* Open Search */}
+              <div className="flex flex-col gap-1 min-w-[80px] flex-[2]">
+                <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
+                  Search
+                </label>
+                <div className="relative group h-[32px] w-full">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-indigo-400 transition-colors">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </span>
+                  <input
+                    type="text"
+                    className="w-full h-full bg-[#0d1323] border border-gray-700 rounded-md pl-8 pr-2 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-inner"
+                    placeholder="Query..."
+                    value={searchInput}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* <div className="min-w-[60px] flex-1"><InlineSearchInput label="Size" value={size} onChange={(v) => { setSize(v); setPage(1); }} options={filterOptions.sizes} /></div> */}
+
+              <div className="flex flex-col gap-1 min-w-[60px] flex-1">
+                <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase">
+                  Size
+                </label>
                 <input
                   type="text"
-                  className="w-full h-full bg-[#0d1323] border border-gray-700 rounded-md pl-8 pr-2 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-inner"
-                  placeholder="Query..."
-                  value={searchInput}
-                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder="Size..."
+                  className="w-full h-[32px] bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                  value={sizeInput}
+                  onChange={(e) => handleSizeChange(e.target.value)}
                 />
               </div>
-            </div>
-
-            {/* <div className="min-w-[60px] flex-1"><InlineSearchInput label="Size" value={size} onChange={(v) => { setSize(v); setPage(1); }} options={filterOptions.sizes} /></div> */}
-
-            <div className="flex flex-col gap-1 min-w-[60px] flex-1">
-              <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase">
-                Size
-              </label>
-              <input
-                type="text"
-                placeholder="Size..."
-                className="w-full h-[32px] bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
-                value={sizeInput}
-                onChange={(e) => handleSizeChange(e.target.value)}
-              />
-            </div>
 
 
-            {/* <div className="min-w-[50px] flex-1"><InlineSearchInput label="Year" value={year} onChange={(v) => { setYear(v); setPage(1); }} options={filterOptions.years.map(String)} /></div> */}
+              {/* <div className="min-w-[50px] flex-1"><InlineSearchInput label="Year" value={year} onChange={(v) => { setYear(v); setPage(1); }} options={filterOptions.years.map(String)} /></div> */}
 
 
-            <div className="flex flex-col gap-1 min-w-[50px] flex-1">
-              <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase">
-                Year
-              </label>
-              <input
-                type="text"
-                placeholder="Year..."
-                className="w-full h-[32px] bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
-                value={yearInput}
-                onChange={(e) => handleYearChange(e.target.value)}
-              />
-            </div>
+              <div className="flex flex-col gap-1 min-w-[50px] flex-1">
+                <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase">
+                  Year
+                </label>
+                <input
+                  type="text"
+                  placeholder="Year..."
+                  className="w-full h-[32px] bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                  value={yearInput}
+                  onChange={(e) => handleYearChange(e.target.value)}
+                />
+              </div>
 
-            {/* Qty Input */}
-            <div className="flex flex-col gap-1 min-w-[40px] flex-[0.8]">
-              <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
-                Qty
-                {qty && <span className="w-1 h-1 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />}
-              </label>
-              <input
-                type="number"
-                placeholder="Qty..."
-                className="w-full h-[32px] bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono"
-                value={qtyInput}
-                onChange={(e) => handleQtyChange(e.target.value)}
-              />
-            </div>
+              {/* Qty Input */}
+              <div className="flex flex-col gap-1 min-w-[40px] flex-[0.8]">
+                <label className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase flex items-center justify-between">
+                  Qty
+                  {qty && <span className="w-1 h-1 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />}
+                </label>
+                <input
+                  type="number"
+                  placeholder="Qty..."
+                  className="w-full h-[32px] bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono"
+                  value={qtyInput}
+                  onChange={(e) => handleQtyChange(e.target.value)}
+                />
+              </div>
 
-            {/* Latest? Checkbox */}
-            {/* <div className="flex flex-col items-center gap-1 min-w-[44px] flex-none cursor-pointer" onClick={() => { setLatest(!latest); setPage(1); }}>
+              {/* Latest? Checkbox */}
+              {/* <div className="flex flex-col items-center gap-1 min-w-[44px] flex-none cursor-pointer" onClick={() => { setLatest(!latest); setPage(1); }}>
               <div className="relative flex items-center justify-center w-auto mt-[4px]">
                 <input
                   type="checkbox"
@@ -313,64 +317,72 @@ export default function DashboardPage() {
               </span>
             </div> */}
 
-            <div className="flex flex-col items-center gap-1 min-w-[44px] flex-none cursor-pointer">
+              <div className="flex flex-col items-center gap-1 min-w-[44px] flex-none cursor-pointer">
 
-              <div className="relative flex items-center justify-center w-auto mt-[4px]">
+                <div className="relative flex items-center justify-center w-auto mt-[4px]">
 
-                <input
-                  type="checkbox"
-                  className="peer appearance-none w-6 h-6 rounded bg-gray-900 checked:bg-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all border-2 border-gray-700 shadow-inner"
-                  checked={latest}
-                  onChange={(e) => {
-                    setLatest(e.target.checked);
-                    setPage(1);
-                  }}
-                />
+                  <input
+                    type="checkbox"
+                    className="peer appearance-none w-6 h-6 rounded bg-gray-900 checked:bg-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all border-2 border-gray-700 shadow-inner"
+                    checked={latest}
+                    onChange={(e) => {
+                      setLatest(e.target.checked);
+                      setPage(1);
+                    }}
+                  />
 
-                <svg
-                  className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity duration-200"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={3}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
+                  <svg
+                    className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity duration-200"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={3}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+
+                </div>
+
+                <span className="text-[12px] font-semibold tracking-wider text-gray-500 uppercase mt-0.5">
+                  Latest?
+                </span>
 
               </div>
 
-              <span className="text-[12px] font-semibold tracking-wider text-gray-500 uppercase mt-0.5">
-                Latest?
-              </span>
+              {/* Actions: Search & Clear (Moved to the end) */}
+              <div className="flex items-center gap-1.5 h-[32px] flex-none ml-1 cursor-pointer">
+                <button
+                  type="button"
+                  title="Search"
+                  className="w-[32px] h-[32px] flex-none flex items-center justify-center rounded-md bg-indigo-600 hover:bg-indigo-500 transition-all text-white shadow-md shadow-indigo-500/20"
+                  onClick={() => { setPage(1); fetchProducts(); }}
+                >
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </button>
 
+                <button
+                  type="button"
+                  title="Clear Search & Filters"
+                  className="w-[32px] h-[32px] flex-none flex items-center justify-center rounded-full bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:text-white transition-all text-gray-400 group"
+                  onClick={clearFilters}
+                >
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="group-hover:-rotate-180 transition-transform duration-300">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+              </div>
             </div>
+          </section>
+        )}
 
-            {/* Actions: Search & Clear (Moved to the end) */}
-            <div className="flex items-center gap-1.5 h-[32px] flex-none ml-1 cursor-pointer">
-              <button
-                type="button"
-                title="Search"
-                className="w-[32px] h-[32px] flex-none flex items-center justify-center rounded-md bg-indigo-600 hover:bg-indigo-500 transition-all text-white shadow-md shadow-indigo-500/20"
-                onClick={() => { setPage(1); fetchProducts(); }}
-              >
-                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </button>
-
-              <button
-                type="button"
-                title="Clear Search & Filters"
-                className="w-[32px] h-[32px] flex-none flex items-center justify-center rounded-full bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:text-white transition-all text-gray-400 group"
-                onClick={clearFilters}
-              >
-                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="group-hover:-rotate-180 transition-transform duration-300">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </section>
+        {/* Supplier Products Header */}
+        <div className="flex items-center justify-between mb-4 mt-2">
+          <h2 className="text-lg font-semibold text-white tracking-tight">
+            Supplier Products
+          </h2>
+        </div>
 
         {/* Supplier Entries Dropdown */}
         <div className="flex items-center gap-2 text-[13px] text-gray-400 mb-3">
@@ -397,6 +409,7 @@ export default function DashboardPage() {
             sortOrder={sortOrder}
             onSort={handleSort}
             onDelete={handleDelete}
+            onToggleChart={setChartOpen}
           />
         </section>
 
@@ -440,6 +453,7 @@ export default function DashboardPage() {
               setCompetitorPage(1);
             }}
             onImportComplete={() => { setCompetitorPage(1); fetchProducts(); }}
+            onToggleChart={setChartOpen}
           />
         </section>
       </div>

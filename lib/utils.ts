@@ -1,29 +1,24 @@
+import dayjs from "dayjs";
+
 /**
- * Formats a date string (ISO or YYYY-MM-DD) to "DD-MMM" (e.g., "24-Jan").
- * Uses UTC to ensure no timezone shift issues for date-only strings.
- * 
- * @param dateString - The raw date string from API/Database
- * @returns Formatted date string "DD-MMM" or "-" if invalid/missing
+ * Display-only helper: formats any date string → "DD-MMM" (e.g. "12-May").
+ * Called in table cell rendering only. Never used to format dates for DB storage.
+ *
+ * Handles: ISO 8601, YYYY-MM-DD, DD-MMM-YYYY, DD-MMM.
  */
 export function formatDDMMM(dateString: string | undefined | null): string {
-    if (!dateString) return "—";
+    if (!dateString || dateString === "—") return "—";
 
-    // If already in DD-MMM format (e.g. "24-Jan"), return as is
-    if (/^\d{2}-[A-Z][a-z]{2}$/.test(dateString)) {
-        return dateString;
-    }
+    // Already "DD-MMM" → return as-is
+    if (/^\d{2}-[A-Z][a-z]{2}$/.test(dateString)) return dateString;
 
-    const date = new Date(dateString);
+    // "DD-MMM-YYYY" → trim year for table display
+    const ddMmmYyyy = dateString.match(/^(\d{1,2}-[A-Z][a-z]{2})-\d{4}$/);
+    if (ddMmmYyyy) return ddMmmYyyy[1].padStart(6, "0"); // "DD-MMM"
 
-    // If the date is invalid, return the original string or fallback
-    if (isNaN(date.getTime())) return dateString;
+    // ISO, YYYY-MM-DD, or any format dayjs can parse
+    const d = dayjs(dateString);
+    if (d.isValid()) return d.format("DD-MMM");
 
-    // DD (with leading zero)
-    const day = date.getUTCDate().toString().padStart(2, '0');
-
-    // MMM (e.g. "Jan", "Feb")
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const month = months[date.getUTCMonth()];
-
-    return `${day}-${month}`;
+    return "—";
 }

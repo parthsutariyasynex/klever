@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, memo } from "react";
+import { useState, useRef, memo, useEffect } from "react";
 import Papa from "papaparse";
 import { useToast } from "./ToastProvider";
 import type { ICompetitorProduct } from "@/types/product";
@@ -56,6 +56,7 @@ interface CompetitorProductsTableProps {
     parentBrand?: string;
     parentSize?: string;
     parentYear?: string;
+    onToggleChart?: (isOpen: boolean) => void;
 }
 
 function CompetitorProductsTable({
@@ -71,13 +72,9 @@ function CompetitorProductsTable({
     onLimitChange,
     onSortChange,
     onImportComplete,
+    onToggleChart,
 }: CompetitorProductsTableProps) {
     const { toast } = useToast();
-
-    // Import state
-    const [uploading, setUploading] = useState(false);
-    const [uploadStatus, setUploadStatus] = useState<string | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Price chart modal state
     const [chartModal, setChartModal] = useState<{
@@ -98,7 +95,18 @@ function CompetitorProductsTable({
             priceLabel: label,
             productName: p.tyre_pattern || (p as any).product_name || key,
         });
+        onToggleChart?.(true);
     };
+
+    const closeChart = () => {
+        setChartModal(null);
+        onToggleChart?.(false);
+    };
+
+    // Import state
+    const [uploading, setUploading] = useState(false);
+    const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     /* ── CSV Import ── */
     const handleFile = async (file: File) => {
@@ -233,7 +241,7 @@ function CompetitorProductsTable({
                         onChange={(e) => onLimitChange(Number(e.target.value))}
                         className="bg-[#0d1323] border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all cursor-pointer"
                     >
-                        {[10, 25, 50, 100].map((n) => (
+                        {[10, 25, 50, 100, 200].map((n) => (
                             <option key={n} value={n}>{n}</option>
                         ))}
                     </select>
@@ -457,7 +465,7 @@ function CompetitorProductsTable({
             {chartModal?.open && (
                 <PriceChartModal
                     isOpen={chartModal.open}
-                    onClose={() => setChartModal(null)}
+                    onClose={closeChart}
                     productKey={chartModal.productKey}
                     source="competitor"
                     priceField={chartModal.priceField}

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Product from "@/models/Product";
-import type { AnyBulkWriteOperation, InferSchemaType } from "mongoose";
-import { formatDDMMM } from "@/lib/utils";
+import type { InferSchemaType } from "mongoose";
+import dayjs from "dayjs";
 
 type ProductType = InferSchemaType<typeof Product.schema>;
 
@@ -10,131 +10,95 @@ interface CSVRow {
     [key: string]: unknown;
 }
 
-/* ──────────────────────────────────────────────
-   Column alias map
-   Maps all known CSV header variations to our
-   field names in the unified products collection.
-   Keys are lowercase, spaces → underscores.
-   ────────────────────────────────────────────── */
+/* ─── Column alias map ─── */
 const HEADER_ALIASES: Record<string, string> = {
-    // source (maps to source field on competitor products)
-    source: "source",
-    source_name: "source",
-    sourcename: "source",
-    product_source: "source",
-    supplier: "source",
-
-    // item_code
-    item_code: "item_code",
-    itemcode: "item_code",
-    "item code": "item_code",
-    code: "item_code",
-    sku: "item_code",
-    product_code: "item_code",
-
-    // category
-    category: "category",
-    brand_category: "category",
-    brandcategory: "category",
-
-    // brand
+    source: "source", source_name: "source", sourcename: "source",
+    product_source: "source", supplier: "source",
+    item_code: "item_code", itemcode: "item_code", "item code": "item_code",
+    code: "item_code", sku: "item_code", product_code: "item_code",
+    category: "category", brand_category: "category", brandcategory: "category",
     brand: "brand",
-
-    // tyre_pattern
-    tyre_pattern: "tyre_pattern",
-    tyrepattern: "tyre_pattern",
-    pattern: "tyre_pattern",
-    product_name: "tyre_pattern",
-    productname: "tyre_pattern",
-    name: "tyre_pattern",
+    tyre_pattern: "tyre_pattern", tyrepattern: "tyre_pattern", pattern: "tyre_pattern",
+    product_name: "tyre_pattern", productname: "tyre_pattern", name: "tyre_pattern",
     tyre_name: "tyre_pattern",
-
-    // size
-    size: "size",
-    load_index: "load_index",
-    loadindex: "load_index",
-
-    // runflat
-    runflat: "runflat",
-    run_flat: "runflat",
-    is_runflat: "runflat",
-
-    // year
-    year: "year",
-
-    // country
-    country: "country",
-
-    // price
-    price: "price",
-    cost: "cost",
-
-    // set_price
-    set_price: "set_price",
-    setprice: "set_price",
-
-    // date
-    date: "date",
-    source_date: "date",
-    sourcedate: "date",
-    created_at: "date",
-    import_date: "date",
-
-    // url
-    url: "url",
-    link: "url",
-    product_url: "url",
-    producturl: "url",
+    size: "size", load_index: "load_index", loadindex: "load_index",
+    runflat: "runflat", run_flat: "runflat", is_runflat: "runflat",
+    year: "year", country: "country",
+    price: "price", cost: "cost",
+    set_price: "set_price", setprice: "set_price",
+    // ── date fields → stored raw (ISO / whatever CSV has) ──
+    date: "source_date", source_date: "source_date", sourcedate: "source_date",
+    created_at: "source_date", import_date: "source_date",
+    url: "url", link: "url", product_url: "url", producturl: "url",
 };
 
-/** Normalize a row's keys using HEADER_ALIASES */
 function normalizeRow(row: CSVRow): CSVRow {
-    const normalized: CSVRow = {};
+    const out: CSVRow = {};
     for (const [key, value] of Object.entries(row)) {
-        const lowerKey = key.trim().toLowerCase().replace(/\s+/g, "_");
-        const mappedKey = HEADER_ALIASES[lowerKey] || HEADER_ALIASES[key.trim().toLowerCase()] || lowerKey;
-        // Only set if not already set (first match wins)
-        if (!(mappedKey in normalized)) {
-            normalized[mappedKey] = value;
-        }
+        const lk = key.trim().toLowerCase().replace(/\s+/g, "_");
+        const mk = HEADER_ALIASES[lk] || HEADER_ALIASES[key.trim().toLowerCase()] || lk;
+        if (!(mk in out)) out[mk] = value;
     }
-    return normalized;
+    return out;
 }
 
-function parseNumber(value: unknown): number | null {
-    if (value === null || value === undefined) return null;
-    const str = String(value).trim();
-    if (str === "") return null;
-    const num = Number(str);
-    return isNaN(num) ? null : num;
+function parseNumber(v: unknown): number | null {
+    if (v == null) return null;
+    const n = Number(String(v).trim());
+    return isNaN(n) ? null : n;
 }
 
-function parseRunflat(value: unknown): string {
-    if (value === null || value === undefined) return "No";
-    const str = String(value).trim().toLowerCase();
-    return ["true", "yes", "1"].includes(str) ? "Yes" : "No";
-}
-
-function safeString(value: unknown): string | null {
-    if (value === null || value === undefined) return null;
-    const str = String(value).trim();
-    return str === "" ? null : str;
+function safeString(v: unknown): string | null {
+    if (v == null) return null;
+    const s = String(v).trim();
+    return s === "" ? null : s;
 }
 
 function detectRunflatFromUrl(url: string | undefined | null): boolean {
-    if (!url) return false;
-    return /run[\s_-]?flat/i.test(url);
+    return url ? /run[\s_-]?flat/i.test(url) : false;
+}
+
+/** Store raw date string from CSV; fall back to today's ISO date */
+function rawDate(v: unknown): string {
+    const s = String(v ?? "").trim();
+    return s || dayjs().format("YYYY-MM-DD");
+}
+
+const PRICE_FIELDS = ["cost", "price", "set_price", "fitting_price"] as const;
+
+/**
+ * Version-aware upsert — creates a new historical record when prices change.
+ * Old record → is_latest=0 (archived). New record → is_latest=1.
+ */
+async function versionedUpsert(
+    filter: Record<string, unknown>,
+    newData: Record<string, unknown>
+): Promise<"inserted" | "updated" | "skipped"> {
+    const col = Product.collection;
+    const existing = await col.findOne({ ...filter, is_latest: 1 });
+
+    if (!existing) {
+        await col.insertOne({ ...newData, is_latest: 1 });
+        return "inserted";
+    }
+
+    const priceChanged = PRICE_FIELDS.some(
+        (f) => newData[f] != null && newData[f] !== existing[f]
+    );
+    const dateChanged = newData.source_date && newData.source_date !== existing.source_date;
+
+    if (!priceChanged && !dateChanged) return "skipped";
+
+    await col.updateOne({ _id: existing._id }, { $set: { is_latest: 0 } });
+    await col.insertOne({ ...newData, is_latest: 1, created_by: existing._id });
+    return "updated";
 }
 
 function transformRow(rawRow: CSVRow): Partial<ProductType> & { item_code: string } {
     const row = normalizeRow(rawRow);
-
-    // Use price field; fall back to cost if price is missing
     const price = parseNumber(row.price) ?? parseNumber(row.cost) ?? 0;
-
     const url = safeString(row.url) ?? "";
 
-    // Detect runflat: check explicit field first, then fall back to URL detection
     let runflat = "No";
     if (row.runflat != null && String(row.runflat).trim() !== "") {
         runflat = ["true", "yes", "1"].includes(String(row.runflat).trim().toLowerCase()) ? "Yes" : "No";
@@ -156,7 +120,7 @@ function transformRow(rawRow: CSVRow): Partial<ProductType> & { item_code: strin
         country: safeString(row.country) ?? "",
         price,
         set_price: parseNumber(row.set_price) ?? 0,
-        date: formatDDMMM(safeString(row.date)),
+        source_date: rawDate(row.source_date),   // ← raw, never formatted
         url,
     } as Partial<ProductType> & { item_code: string };
 }
@@ -176,7 +140,6 @@ export async function POST(req: NextRequest) {
         }
 
         const rows: CSVRow[] = body?.data;
-
         if (!Array.isArray(rows) || rows.length === 0) {
             return NextResponse.json(
                 { error: "No data provided. Please upload a valid CSV file." },
@@ -184,32 +147,29 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // ── DEBUG: Log CSV headers and first row ──
         const originalHeaders = Object.keys(rows[0]);
         const normalizedFirstRow = normalizeRow(rows[0]);
         const transformedFirstRow = transformRow(rows[0]);
+
         console.log("=== COMPETITOR CSV IMPORT DEBUG ===");
         console.log("Original CSV headers:", originalHeaders);
         console.log("Normalized keys:", Object.keys(normalizedFirstRow));
-        console.log("First row (original):", rows[0]);
-        console.log("First row (normalized):", normalizedFirstRow);
         console.log("First row (transformed):", transformedFirstRow);
         console.log("==================================");
 
         let inserted = 0;
         let updated = 0;
+        let skipped = 0;
         let failed = 0;
         const errors: string[] = [];
 
-        const batchSize = 100;
+        const batchSize = 50;
 
         for (let i = 0; i < rows.length; i += batchSize) {
             const batch = rows.slice(i, i + batchSize);
-            const operations: AnyBulkWriteOperation<ProductType>[] = [];
 
             for (let j = 0; j < batch.length; j++) {
-                const row = batch[j];
-                const data = transformRow(row);
+                const data = transformRow(batch[j]);
 
                 if (!data.item_code) {
                     failed++;
@@ -217,39 +177,30 @@ export async function POST(req: NextRequest) {
                     continue;
                 }
 
-                operations.push({
-                    updateOne: {
-                        filter: { item_code: data.item_code, product_source: "competitor" },
-                        update: { $set: data },
-                        upsert: true,
-                    },
-                });
-            }
-
-            if (operations.length > 0) {
-                const result = await Product.bulkWrite(operations, { ordered: false });
-                inserted += result.upsertedCount || 0;
-                updated += result.modifiedCount || 0;
+                try {
+                    const res = await versionedUpsert(
+                        { item_code: data.item_code, product_source: "competitor" },
+                        { ...(data as Record<string, unknown>), product_source: "competitor" }
+                    );
+                    if (res === "inserted") inserted++;
+                    else if (res === "updated") updated++;
+                    else skipped++;
+                } catch (e: any) {
+                    failed++;
+                    errors.push(`Row ${i + j + 1}: ${e.message}`);
+                }
             }
         }
 
         return NextResponse.json({
             success: true,
-            message: `Import complete: ${inserted} inserted, ${updated} updated, ${failed} failed`,
-            details: { inserted, updated, failed, total: rows.length },
+            message: `Import complete: ${inserted} inserted, ${updated} updated, ${skipped} skipped, ${failed} failed`,
+            details: { inserted, updated, skipped, failed, total: rows.length },
             errors: errors.length > 0 ? errors.slice(0, 10) : undefined,
-            debug: {
-                originalHeaders,
-                normalizedKeys: Object.keys(normalizedFirstRow),
-                firstRowOriginal: rows[0],
-                firstRowTransformed: transformedFirstRow,
-            },
+            debug: { originalHeaders, normalizedKeys: Object.keys(normalizedFirstRow), firstRowTransformed: transformedFirstRow },
         });
     } catch (error) {
         console.error("POST /api/competitor-products/import error:", error);
-        return NextResponse.json(
-            { error: "Failed to import competitor products" },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: "Failed to import competitor products" }, { status: 500 });
     }
 }

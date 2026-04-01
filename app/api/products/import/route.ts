@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Product from "@/models/Product";
-import type { AnyBulkWriteOperation, InferSchemaType } from "mongoose";
-import { formatDDMMM } from "@/lib/utils";
+import type { InferSchemaType } from "mongoose";
+import dayjs from "dayjs";
+
+/** Store the raw date string from CSV, or ISO today as fallback.
+ *  Never format for display — formatting happens in the UI only.
+ */
+function rawDate(val: unknown): string {
+  const s = String(val ?? "").trim();
+  if (s) return s;
+  return dayjs().format("YYYY-MM-DD");  // ISO fallback: no source_date in CSV
+}
 
 type ProductType = InferSchemaType<typeof Product.schema>;
 
@@ -118,8 +127,8 @@ function transformSupplierRow(row: CSVRow): Partial<ProductType> {
     country: safeString(row.country),
     year: parseNumber(row.year),
     product_image_url: safeString(row.product_image_url),
-    source_date: formatDDMMM(safeString(row.source_date)),
-    date: formatDDMMM(safeString(row.date)),
+    source_date: rawDate(row.source_date || row.date),
+    date: rawDate(row.date || row.source_date),
     url: safeString(row.url),
   };
 }
@@ -162,16 +171,16 @@ function transformCompetitorRow(rawRow: CSVRow): Partial<ProductType> {
     country: safeString(row.country) ?? "",
     price,
     set_price: parseNumber(row.set_price) ?? 0,
-    source_date: formatDDMMM(safeString(row.source_date)),
+    source_date: rawDate(row.source_date),
     url,
   };
 }
 
 // Increase body size limit for large CSV files (default is ~1MB)
-export const config = {
-  maxDuration: 60,
-};
-
+// export const config = {
+//   maxDuration: 60,
+// };
+export const maxDuration = 60;
 // ---------- POST /api/products/import — CSV import ----------
 export async function POST(req: NextRequest) {
   try {
@@ -218,16 +227,66 @@ export async function POST(req: NextRequest) {
 
     let inserted = 0;
     let updated = 0;
+    let skipped = 0;
     let failed = 0;
     let supplierCount = 0;
     let competitorCount = 0;
     const errors: string[] = [];
 
-    const batchSize = 100;
+    // Price fields we track for history
+    const PRICE_FIELDS = ["cost", "price", "set_price", "fitting_price"] as const;
+
+    /**
+     * Version-aware upsert:
+     *  1. Look for the current "latest" record.
+     *  2. If none exists → insert fresh (is_latest=1).
+     *  3. If exists AND price values changed → archive old (is_latest=0),
+     *     insert new (is_latest=1, created_by=oldId).
+     *  4. If exists AND nothing changed → skip (avoid duplicate history points).
+     */
+    async function versionedUpsert(
+      filter: Record<string, unknown>,
+      newData: Record<string, unknown>
+    ): Promise<"inserted" | "updated" | "skipped"> {
+      const col = Product.collection;
+      const existing = await col.findOne({ ...filter, is_latest: 1 });
+
+      if (!existing) {
+        await col.insertOne({ ...newData, is_latest: 1 });
+        return "inserted";
+      }
+
+      // Check whether any tracked price field actually changed
+      const priceChanged = PRICE_FIELDS.some(
+        (f) => newData[f] != null && newData[f] !== existing[f]
+      );
+      // Also consider source_date change as a meaningful update
+      const dateChanged =
+        newData.source_date && newData.source_date !== existing.source_date;
+
+      if (!priceChanged && !dateChanged) {
+        return "skipped"; // identical data, no history point needed
+      }
+
+      // Archive old record
+      await col.updateOne(
+        { _id: existing._id },
+        { $set: { is_latest: 0 } }
+      );
+
+      // Insert new record with lineage
+      await col.insertOne({
+        ...newData,
+        is_latest: 1,
+        created_by: existing._id,
+      });
+      return "updated";
+    }
+
+    const batchSize = 50; // smaller batch since we now do per-row DB reads
 
     for (let i = 0; i < rows.length; i += batchSize) {
       const batch = rows.slice(i, i + batchSize);
-      const operations: AnyBulkWriteOperation<ProductType>[] = [];
 
       for (let j = 0; j < batch.length; j++) {
         const row = batch[j];
@@ -235,78 +294,69 @@ export async function POST(req: NextRequest) {
         // 1) Determine product_source for this row
         let rowSourceType: "supplier" | "competitor" = "supplier";
 
-        // Check per-row product_source column first
         const rowType = row.product_source && typeof row.product_source === "string"
           ? row.product_source.trim().toLowerCase()
           : "";
         if (rowType === "competitor" || rowType === "supplier") {
           rowSourceType = rowType;
         } else if (detectedType === "mixed") {
-          // Fallback: detect per-row based on fields
           rowSourceType = (row.item_code || row.itemcode) && !row.sku ? "competitor" : "supplier";
         } else {
           rowSourceType = detectedType === "competitor" ? "competitor" : "supplier";
         }
 
+        try {
+          if (rowSourceType === "competitor") {
+            competitorCount++;
+            const data = transformCompetitorRow(row) as Record<string, unknown>;
 
+            const uniqueKey =
+              (data.item_code as string) ||
+              safeString(row.sku) ||
+              safeString(row.item_code);
 
+            if (!uniqueKey) {
+              failed++;
+              errors.push(`Row ${i + j + 1}: Missing 'item_code'`);
+              continue;
+            }
 
+            const result = await versionedUpsert(
+              { item_code: uniqueKey, product_source: "competitor" },
+              { ...data, item_code: uniqueKey, product_source: "competitor" }
+            );
+            if (result === "inserted") inserted++;
+            else if (result === "updated") updated++;
+            else skipped++;
 
-        // transform based on detected type
-        if (rowSourceType === "competitor") {
-          competitorCount++;
-          const data = transformCompetitorRow(row);
+          } else {
+            supplierCount++;
+            const data = transformSupplierRow(row) as Record<string, unknown>;
 
-          const uniqueKey =
-            data.item_code ||
-            safeString(row.sku) ||
-            safeString(row.item_code);
+            if (!data.sku) {
+              failed++;
+              errors.push(`Row ${i + j + 1}: Missing required field 'sku'`);
+              continue;
+            }
 
-          if (!uniqueKey) {
-            failed++;
-            errors.push(`Row ${i + j + 1}: Missing 'item_code'`);
-            continue;
+            const result = await versionedUpsert(
+              { sku: data.sku, product_source: "supplier" },
+              { ...data, product_source: "supplier" }
+            );
+            if (result === "inserted") inserted++;
+            else if (result === "updated") updated++;
+            else skipped++;
           }
-
-          operations.push({
-            updateOne: {
-              filter: { item_code: uniqueKey, product_source: "competitor" },
-              update: { $set: data },
-              upsert: true,
-            },
-          });
-
-        } else {
-          supplierCount++;
-          const data = transformSupplierRow(row);
-
-          if (!data.sku) {
-            failed++;
-            errors.push(`Row ${i + j + 1}: Missing required field 'sku'`);
-            continue;
-          }
-
-          operations.push({
-            updateOne: {
-              filter: { sku: data.sku, product_source: "supplier" },
-              update: { $set: data },
-              upsert: true,
-            },
-          });
+        } catch (e: any) {
+          failed++;
+          errors.push(`Row ${i + j + 1}: ${e.message}`);
         }
-      }
-
-      // Execute bulkWrite per batch, OUTSIDE the inner 'j' loop
-      if (operations.length > 0) {
-        const result = await Product.bulkWrite(operations, { ordered: false });
-        inserted += result.upsertedCount || 0;
-        updated += result.modifiedCount || 0;
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: `Import complete (${detectedType}): ${inserted} inserted, ${updated} updated, ${failed} failed | supplier: ${supplierCount}, competitor: ${competitorCount}`,
+      message: `Import complete (${detectedType}): ${inserted} inserted, ${updated} updated, ${skipped} skipped, ${failed} failed | supplier: ${supplierCount}, competitor: ${competitorCount}`,
       detectedType,
       details: { inserted, updated, failed, total: rows.length, supplierCount, competitorCount },
       errors: errors.length > 0 ? errors.slice(0, 10) : undefined,

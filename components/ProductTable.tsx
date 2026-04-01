@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 import { IProduct } from "@/types/product";
 import { useToast } from "./ToastProvider";
 import { formatDDMMM } from "@/lib/utils";
@@ -14,6 +14,7 @@ interface ProductTableProps {
     sortOrder: "asc" | "desc";
     onSort: (field: string) => void;
     onDelete: (id: string) => void;
+    onToggleChart?: (isOpen: boolean) => void;
 }
 
 const COLUMNS = [
@@ -38,7 +39,7 @@ function formatCurrency(val: number) {
 
 
 
-function ProductTable({ products, loading, page, sortBy, sortOrder, onSort, onDelete }: ProductTableProps) {
+function ProductTable({ products, loading, page, sortBy, sortOrder, onSort, onDelete, onToggleChart }: ProductTableProps) {
     // function ProductTable({ products, loading, page, sortBy, sortOrder, onSort }: ProductTableProps) {
 
     const perPage = 200;
@@ -64,6 +65,12 @@ function ProductTable({ products, loading, page, sortBy, sortOrder, onSort, onDe
             priceLabel: label,
             productName: p.product_name || p.sku || "Product",
         });
+        onToggleChart?.(true);
+    };
+
+    const closeChart = () => {
+        setChartModal(null);
+        onToggleChart?.(false);
     };
 
     const handleCopy = async (p: IProduct) => {
@@ -268,20 +275,7 @@ function ProductTable({ products, loading, page, sortBy, sortOrder, onSort, onDe
             {chartModal?.open && (
                 <PriceChartModal
                     isOpen={chartModal.open}
-                    onClose={() => setChartModal(null)}
-                    productKey={chartModal.productKey}
-                    source="supplier"
-                    priceField={chartModal.priceField}
-                    priceLabel={chartModal.priceLabel}
-                    productName={chartModal.productName}
-                />
-            )}
-
-            {/* Price Chart Modal */}
-            {chartModal?.open && (
-                <PriceChartModal
-                    isOpen={chartModal.open}
-                    onClose={() => setChartModal(null)}
+                    onClose={closeChart}
                     productKey={chartModal.productKey}
                     source="supplier"
                     priceField={chartModal.priceField}
